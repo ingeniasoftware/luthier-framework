@@ -1,0 +1,26 @@
+{
+    "name": "ingeniasoftware/luthier-framework",
+    "description": "Minimalist yet powerful PHP framework",
+    "type": "project",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Anderson Salas",
+            "email": "anderson@ingenia.me"
+        }
+    ],
+    "minimum-stability": "dev",
+    "require": {
+        "symfony/dotenv": "^3.3",
+        "symfony/http-foundation": "^3.3",
+        "symfony/routing": "^3.3",
+        "symfony/http-kernel": "^3.3",
+        "twig/twig": "^2.4"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "application/",
+            "Luthier\\": "luthier/"
+        }
+    }
+}
