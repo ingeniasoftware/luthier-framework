@@ -48,7 +48,6 @@ class Framework
         }
         catch (\Exception $e)
         {
-            return new Response($e->getMessage());
             return new Response('An error occurred', 500);
         }
     }

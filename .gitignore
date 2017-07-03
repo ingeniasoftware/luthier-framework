@@ -1,6 +1,4 @@
 /vendor/
 .env
 application/Controllers/
-public/
-!public/index.php
-!public/.htaccess
+
