@@ -2,3 +2,4 @@
 .env
 application/Controllers/
 
+application/Storage/Cache/*

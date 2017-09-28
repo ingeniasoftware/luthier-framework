@@ -33,6 +33,9 @@ class Framework
     {
         $this->matcher->getContext()->fromRequest($request);
 
+        // TODO: Add JSON response errors
+        // TODO: Add CLI response erros
+
         try
         {
             $request->attributes->add($this->matcher->match($request->getPathInfo()));
@@ -44,10 +47,20 @@ class Framework
         }
         catch (ResourceNotFoundException $e)
         {
-            return new Response('Not Found', 404);
+            if(ENVIRONMENT != 'production')
+                throw $e;
+
+            ob_start();
+            include VIEW_PATH . '/Internals/404.php';
+            $_404 = ob_get_clean();
+
+            return new Response($_404, 404);
         }
         catch (\Exception $e)
         {
+            if(ENVIRONMENT != 'production')
+                throw $e;
+
             return new Response('An error occurred', 500);
         }
     }

@@ -13,16 +13,10 @@ class Controller
 {
     public function __construct()
     {
+        // The Loader Class
         $this->load = new Loader();
-    }
 
-    private function load($name, $objectName = NULL)
-    {
-        $class = 'Luthier\\'.$name;
-
-        if($objectName === NULL)
-            $objectName = $name;
-
-        $this->$objectName = new $class();
+        // The Twig Class (alias)
+        $this->view = new Twig();
     }
 }
