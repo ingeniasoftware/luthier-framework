@@ -1,2 +1,3 @@
-# luthier-framework
-Minimalist yet powerful PHP framework inspired by CodeIgniter 
+# Luthier Framework
+
+Under construction...

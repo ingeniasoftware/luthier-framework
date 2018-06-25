@@ -1,5 +1,2 @@
-/vendor/
+vendor/
 .env
-application/Controllers/
-
-application/Storage/Cache/*

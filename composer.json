@@ -1,29 +1,33 @@
 {
-    "name": "ingeniasoftware/luthier-framework",
-    "description": "Minimalist yet powerful PHP framework",
-    "type": "project",
-    "license": "MIT",
+    "name"       : "luthier/framework",
+    "type"       : "library",
+    "description": "Versatile PHP micro-framework",
+    "license"    : "MIT",
+    "homepage"   : "https://luthier.ingenia.me/framework/en/",
     "authors": [
         {
-            "name": "Anderson Salas",
-            "email": "anderson@ingenia.me"
+            "name"    : "Anderson Salas",
+            "email"   : "anderson@ingenia.me",
+            "homepage": "https://ingenia.me",
+            "role"    : "Lead developer"
         }
     ],
-    "minimum-stability": "dev",
+    "keywords": [
+        "framework", "micro-framework", "routing", "middleware", "dependency-injection", "luthier"
+    ],
+    "minimum-stability": "stable",
     "require": {
-        "symfony/dotenv": "^3.3",
-        "symfony/http-foundation": "^3.3",
-        "symfony/routing": "^3.3",
-        "symfony/http-kernel": "^3.3",
-        "twig/twig": "^2.4",
-        "symfony/debug": "^3.3",
-        "symfony/var-dumper": "^3.3",
-        "maximebf/debugbar": "^1.13"
+        "php"                    : ">=7.1.8",
+        "symfony/http-foundation": "^4.0",
+        "symfony/routing"        : "^4.0"
+    },
+    "require-dev": {},
+    "support": {
+        "email": "anderson@ingenia.me"
     },
     "autoload": {
         "psr-4": {
-            "App\\": "application/",
-            "Luthier\\": "luthier/"
+            "Luthier\\": "src/"
         }
     }
 }
