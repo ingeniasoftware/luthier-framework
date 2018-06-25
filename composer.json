@@ -1,7 +1,7 @@
 {
     "name"       : "luthier/framework",
     "type"       : "library",
-    "description": "Versatile PHP micro-framework",
+    "description": "Versatile PHP micro-framework for make APIs and websites quickly",
     "license"    : "MIT",
     "homepage"   : "https://luthier.ingenia.me/framework/en/",
     "authors": [
@@ -21,7 +21,9 @@
         "symfony/http-foundation": "^4.0",
         "symfony/routing"        : "^4.0"
     },
-    "require-dev": {},
+    "require-dev": {
+        
+    },
     "support": {
         "email": "anderson@ingenia.me"
     },
