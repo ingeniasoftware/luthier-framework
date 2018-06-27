@@ -15,10 +15,37 @@ use Symfony\Component\Routing\RouteCollection;
 
 class Router
 {
+
+    /**
+     * Defined Luthier Framework routes
+     *
+     * @var $routes
+     *
+     * @access protected
+     */
     protected $routes = [];
 
+
+    /**
+     * Current route
+     *
+     * @var $currentRoute
+     *
+     * @access protected
+     */
     protected $currentRoute = null;
 
+
+    /**
+     * __call() magic method
+     *
+     * @param  mixed        $method
+     * @param  array        $args
+     *
+     * @return mixed
+     *
+     * @access public
+     */
     public function __call($method, array $args)
     {
         if( $method === 'group' )
@@ -35,11 +62,27 @@ class Router
         }
     }
 
+
+    /**
+     * Get defined Luthier Framework routes
+     *
+     * @return array
+     *
+     * @access public
+     */
     public function getRoutes()
     {
         return $this->routes;
     }
 
+
+    /**
+     * Get ALL Luthier Framework routes compiled into Symfony Router Component route objects
+     *
+     * @return array
+     *
+     * @access public
+     */
     public function getCompiledRoutes()
     {
         $routes = new RouteCollection();
@@ -59,12 +102,29 @@ class Router
         return $routes;
     }
 
+
+    /**
+     * Set the current route
+     *
+     * @param  LuthierRoute $route
+     *
+     * @return mixed
+     *
+     * @access public
+     */
     public function setCurrentRoute(LuthierRoute $route)
     {
         $this->currentRoute = $route;
-        return $this;
     }
 
+
+    /**
+     * Get the current route
+     *
+     * @return LuthierRoute|null
+     *
+     * @access public
+     */
     public function getCurrentRoute()
     {
         return $this->currentRoute;

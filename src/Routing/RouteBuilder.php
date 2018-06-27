@@ -9,12 +9,20 @@
 
 namespace Luthier\Routing;
 
-use Luthier\Exception\RouteNotFoundException;
+use Luthier\Routing\Router;
 
 class RouteBuilder
 {
     const HTTP_VERBS = ['GET','POST','PUT','PATCH','DELETE','HEAD','OPTIONS','TRACE'];
 
+
+    /**
+     * Route context array
+     *
+     * @var static $context
+     *
+     * @access private
+     */
     private static $context = [
         'middleware' => [
             'route'  => [],
@@ -32,6 +40,17 @@ class RouteBuilder
     ];
 
 
+    /**
+     * __callStatic() magic method
+     *
+     * @param  mixed  $callback
+     * @param  array  $args
+     *
+     * @return mixed
+     *
+     * @access public
+     * @static
+     */
     public static function __callStatic($callback, array $args)
     {
         if($callback == 'match')
@@ -47,7 +66,21 @@ class RouteBuilder
     }
 
 
-    public static function group($router, $prefix, $attributes, $routes = null)
+
+    /**
+     * Creates a new route group
+     *
+     * @param  ?Router   $router Current router instance
+     * @param  mixed     $prefix Route group prefix
+     * @param  mixed     $attributes Route group attributes
+     * @param  mixed     $routes (Optional)
+     *
+     * @return mixed
+     *
+     * @access public
+     * @static
+     */
+    public static function group(?Router $router, $prefix, $attributes, $routes = null)
     {
         if($routes === null && is_callable($attributes))
         {
@@ -87,7 +120,9 @@ class RouteBuilder
             self::$context['host'] = $attributes['host'];
         }
 
-        $routes($router);
+        $routeCallbackArray = $router === null ? [] : [$router];
+
+        call_user_func_array($routes, $routeCallbackArray);
 
         array_pop(self::$context['prefix']);
 
@@ -113,6 +148,17 @@ class RouteBuilder
     }
 
 
+    /**
+     * Define a global middleware
+     *
+     * @param  mixed        $middleware
+     * @param  mixed        $point (Optional)
+     *
+     * @return mixed
+     *
+     * @access public
+     * @static
+     */
     public static function middleware($middleware, $point = 'pre_controller')
     {
         if(!is_array($middleware))
@@ -130,7 +176,17 @@ class RouteBuilder
     }
 
 
-    public static function getContext($context)
+    /**
+     * Get RouteBuilder context var
+     *
+     * @param  string $context
+     *
+     * @return mixed
+     *
+     * @access public
+     * @static
+     */
+    public static function getContext(string $context)
     {
         return self::$context[$context];
     }
