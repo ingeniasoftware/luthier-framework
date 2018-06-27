@@ -208,11 +208,11 @@ class Route
     public function compile()
     {
         $name = $this->name;
-
         $path = $this->fullPath;
 
         $defaults = [
-            '_controller'  => $this->action,
+            '_controller' => $this->action,
+            '_instance'   => $this,
         ];
         $requirements = [];
 

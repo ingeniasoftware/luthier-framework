@@ -23,6 +23,8 @@ final class RouteParam
 
     public $value;
 
+    // FIXME: (:num) placeholder not detected properly!
+    
     private static $placeholderPatterns = [
         '{num:[a-zA-Z0-9-_]*(\?}|})'      => '(:num)', # (:num) route
         '{any:[a-zA-Z0-9-_]*(\?}|})'      => '(:any)', # (:any) route

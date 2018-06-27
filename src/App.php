@@ -10,7 +10,7 @@
 namespace Luthier;
 
 use Luthier\Http\{Request, Response};
-use Luthier\Routing\Router;
+use Luthier\Routing\{Router, RouteBuilder};
 use Symfony\Component\HttpFoundation\{Request as SfRequest, Response as SfResponse};
 use Symfony\Component\HttpKernel;
 use Symfony\Component\Routing;
@@ -25,6 +25,29 @@ class App
 
     protected $router;
 
+    public function __call($method, $args)
+    {
+        if(in_array(strtoupper($method), RouteBuilder::HTTP_VERBS))
+        {
+            return call_user_func_array([$this->router, $method], $args);
+        }
+        if(in_array($method, ['group']))
+        {
+            return call_user_func_array([$this->router, $method], $args);
+        }
+
+         throw new \Exception("Undefined method App::{$method}() ");
+    }
+
+    public function __get($property)
+    {
+        if(isset($this->{$property}))
+        {
+            return $this->{$property};
+        }
+
+        throw new \Exception("Undefined property App::$property ");
+    }
 
     public static function getInstance()
     {
@@ -37,35 +60,7 @@ class App
         $this->request  = new Request($request);
         $this->response = new Response();
         $this->router   = new Router();
-        self::$instance = $this;
-    }
-
-
-    public function getRequest()
-    {
-        return $this->request;
-    }
-
-
-    public function getResponse()
-    {
-        return $this->response;
-    }
-
-
-    public function getRouter()
-    {
-        return $this->router;
-    }
-
-
-    public function getApp()
-    {
-        return [
-            $this->router,
-            $this->request,
-            $this->response
-        ];
+        self::$instance = &$this;
     }
 
 
@@ -88,26 +83,42 @@ class App
 
         try
         {
-            $request->attributes->add($matcher->match($request->getPathInfo()));
+            $matchedRoute  = $matcher->match($request->getPathInfo());
+                             $request->attributes->add($matchedRoute);
+
+            $routeInstance = $matchedRoute['_instance'];
+
+            $this->router->setCurrentRoute($routeInstance);
 
             $controller = $controllerResolver->getController($request);
             $arguments  = $argumentResolver->getArguments($request, $controller);
-            $response   = call_user_func_array($controller, $arguments);
+
+            foreach($arguments as $i => $arg)
+            {
+                if($arg === null)
+                {
+                    unset($arguments[$i]);
+                }
+            }
+
+            $responseResult = call_user_func_array($controller, $arguments);
 
         }
         catch(Routing\Exception\ResourceNotFoundException $e)
         {
-            $response = new SfResponse('Not Found', 404);
+            return (new SfResponse('Not Found', 404))->send();
         }
         catch(\Exception $e)
         {
-            $response = new SfResponse('An error occurred', 500);
+            return (new SfResponse('An error occurred', 500))->send();
         }
 
-        if($response instanceof SfResponse)
+        if(isset($responseResult) && $responseResult instanceof SfResponse)
         {
-            $response->send();
+            return $responseResult->send();
         }
-    }
 
+        $response->send();
+
+    }
 }

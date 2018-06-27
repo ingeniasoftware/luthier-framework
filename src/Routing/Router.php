@@ -9,12 +9,15 @@
 
 namespace Luthier\Routing;
 
+use Luthier\Routing\Route as LuthierRoute;
 use Symfony\Component\Routing\Route;
 use Symfony\Component\Routing\RouteCollection;
 
 class Router
 {
     protected $routes = [];
+
+    protected $currentRoute = null;
 
     public function __call($method, array $args)
     {
@@ -40,21 +43,31 @@ class Router
     public function getCompiledRoutes()
     {
         $routes = new RouteCollection();
-        $i = 0;
 
-        foreach($this->routes as $route)
+        foreach($this->routes as $i => $route)
         {
             [$name, $route] = $route->compile();
 
             if(empty($name))
             {
                 $name = '__anonymous_route' . $i;
-                $i++;
             }
+
             $routes->add($name, $route);
         }
 
         return $routes;
+    }
+
+    public function setCurrentRoute(LuthierRoute $route)
+    {
+        $this->currentRoute = $route;
+        return $this;
+    }
+
+    public function getCurrentRoute()
+    {
+        return $this->currentRoute;
     }
 
 }

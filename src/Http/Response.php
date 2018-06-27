@@ -32,7 +32,11 @@ class Response
         $this->sfResponse->headers->set('Content-Type', 'application/json');
         $this->sfResponse->setStatusCode($status);
         $this->sfResponse->setContent(json_encode($data));
+    }
 
-        return $this->sfResponse;
+    public function write(string $content)
+    {
+        $this->sfResponse->setContent($this->sfResponse->getContent() . $content);
+        return $this;
     }
 }
