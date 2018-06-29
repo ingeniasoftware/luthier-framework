@@ -396,6 +396,11 @@ class Route
         return $this;
     }
 
+    public function middleware($middleware)
+    {
+        $this->middleware[] = $middleware;
+    }
+
 
     /**
      * Set the route host (method chaining)

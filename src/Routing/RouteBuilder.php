@@ -26,11 +26,7 @@ class RouteBuilder
     private static $context = [
         'middleware' => [
             'route'  => [],
-            'global' => [
-                'pre_controller'  => [],
-                'controller'      => [],
-                'post_controller' => [],
-            ],
+            'global' => [],
         ],
         'namespace' => [],
         'prefix'    => [],
@@ -136,6 +132,8 @@ class RouteBuilder
             array_pop(self::$context['middleware']['route']);
         }
 
+        // FIXME: Schemes set bug with array (Warning: strtolower() expects parameter 1 to be string)
+
         if(isset($attributes['schemes']))
         {
             array_pop(self::$context['schemes']);
@@ -159,7 +157,7 @@ class RouteBuilder
      * @access public
      * @static
      */
-    public static function middleware($middleware, $point = 'pre_controller')
+    public static function middleware($middleware)
     {
         if(!is_array($middleware))
         {
@@ -168,9 +166,9 @@ class RouteBuilder
 
         foreach($middleware as $_middleware)
         {
-            if(!in_array($_middleware, self::$context['middleware']['global'][$point]))
+            if(!in_array($_middleware, self::$context['middleware']['global']))
             {
-                self::$context['middleware']['global'][$point][] = $_middleware;
+                self::$context['middleware']['global'][] = $_middleware;
             }
         }
     }

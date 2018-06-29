@@ -30,6 +30,27 @@ class App
 
 
     /**
+     * Request middleware iterator
+     *
+     * @var static $requestIterator
+     *
+     * @access private
+     */
+    private static $requestIterator;
+
+
+
+    /**
+     * Next request closure
+     *
+     * @var static $nextRequest
+     *
+     * @access private
+     */
+    private static $nextRequest;
+
+
+    /**
      * App request object
      *
      * @var $request
@@ -76,7 +97,7 @@ class App
         {
             return call_user_func_array([$this->router, $method], $args);
         }
-        else if(in_array($method, ['group']))
+        else if(in_array($method, ['group', 'middleware']))
         {
             return call_user_func_array([$this->router, $method], $args);
         }
@@ -129,6 +150,37 @@ class App
 
 
     /**
+     * Returns the request middleware stack iterator
+     *
+     * @return mixed
+     *
+     * @access public
+     * @static
+     */
+    public static function getRequestIterator()
+    {
+        return self::$requestIterator;
+    }
+
+
+    /**
+     * Continue to next middleware, or final request if no more middleware in the request
+     * stack
+     *
+     * @param  mixed $request
+     * @param  mixed $response
+     *
+     * @return mixed
+     *
+     * @access public
+     * @static
+     */
+    public static function continueRequest($request, $response)
+    {
+        return call_user_func_array(self::$nextRequest, [$request, $response]);
+    }
+
+    /**
      * Class constructor
      *
      * @return mixed
@@ -147,7 +199,7 @@ class App
 
 
     /**
-     * Run the application
+     * Run the application and dispatches the response
      *
      * @param  SfRequest $request Custom request object (optional)
      *
@@ -157,32 +209,36 @@ class App
      */
     public function run(SfRequest $request = null)
     {
-        $request = $request === null
-            ? $this->request->getSfRequest()
-            : $request;
 
-        $response = $this->response->getSfResponse();
-        $context  = new Routing\RequestContext();
+        // Base request/response
 
-        $context->fromRequest($request);
-
-        $routes  = $this->router->getCompiledRoutes();
-        $matcher = new Routing\Matcher\UrlMatcher($routes, $context);
-
-        $controllerResolver = new HttpKernel\Controller\ControllerResolver();
-        $argumentResolver   = new HttpKernel\Controller\ArgumentResolver();
+        $request  = $request === null ? $this->request : $request;
+        $response = $this->response;
 
         try
         {
-            $matchedUrl  = $matcher->match($request->getPathInfo());
-                           $request->attributes->add($matchedUrl);
+            // Symfony Router Component url match
+            $match = (
+                new Routing\Matcher\UrlMatcher(
+                    $this->router->getCompiledRoutes(),
+                    (new Routing\RequestContext())->fromRequest($request->getSfRequest())
+                )
+            )->match($request->getSfRequest()->getPathInfo());
 
-            $route = $matchedUrl['_instance'];
+            $request->getSfRequest()->attributes->add($match);
+
+            // Founded? Set the current route
+            $route = $match['_instance'];
             $this->router->setCurrentRoute($route);
 
-            $controller = $controllerResolver->getController($request);
-            $arguments  = $argumentResolver->getArguments($request, $controller);
+            // Resolve controller/arguments (again, with the Symfony Router Component)
+            $controller = (new HttpKernel\Controller\ControllerResolver())
+                ->getController($request->getSfRequest());
 
+            $arguments  = (new HttpKernel\Controller\ArgumentResolver())
+                ->getArguments($request->getSfRequest(), $controller);
+
+            // Set the router parameter values from current url
             foreach($arguments as $i => $arg)
             {
                 if($arg === null)
@@ -193,7 +249,8 @@ class App
 
             $paramOffset = 0;
 
-            foreach( explode('/', trim($request->getPathInfo(), '/')) as $i => $urlSegment )
+            // Build the request stack array
+            foreach( explode('/', trim($request->getSfRequest()->getPathInfo(), '/')) as $i => $urlSegment )
             {
                 $routeSegment = explode('/', $route->getFullPath())[$i];
                 if(substr($routeSegment,0,1) == '{' && substr($routeSegment,-1) == '}')
@@ -203,8 +260,46 @@ class App
                 }
             }
 
-            $responseResult = call_user_func_array($controller, $arguments);
+            $requestStack = [];
 
+            foreach(RouteBuilder::getContext('middleware')['global'] as $middleware)
+            {
+                $requestStack[] = $middleware;
+            }
+
+            // Set the request stack iterator and next request callback
+            self::$requestIterator = function() use($requestStack, $controller, $arguments)
+            {
+                static $r = 0;
+                return isset($requestStack[++$r])
+                    ? [ $requestStack[$r] , NULL ]
+                    : [ NULL, [$controller, $arguments] ];
+            };
+            self::$nextRequest = function($request, $response)
+            {
+                [$middleware, $action] = (\Luthier\App::getRequestIterator())();
+
+                if($action !== NULL)
+                {
+                    [$controller, $arguments] = $action;
+                    return call_user_func_array($controller, $arguments);
+                }
+
+                return call_user_func_array( $middleware, [$request, $response, function($request,$response){
+                    return \Luthier\App::continueRequest($request, $response);
+                }]);
+            };
+
+            if(count($requestStack) > 0)
+            {
+                $responseResult = call_user_func_array($requestStack[0],[$request, $response, function($request,$response){
+                    return \Luthier\App::continueRequest($request, $response);
+                }]);
+            }
+            else
+            {
+                $responseResult = call_user_func_array($controller, $arguments);
+            }
         }
         catch(Routing\Exception\ResourceNotFoundException $e)
         {
@@ -215,11 +310,15 @@ class App
             return (new SfResponse('An error occurred', 500))->send();
         }
 
-        if(isset($responseResult) && $responseResult instanceof SfResponse)
+        // The route returned a Symfony response object? send it
+
+        if($responseResult instanceof SfResponse)
         {
             return $responseResult->send();
         }
 
-        $response->send();
+        // If not, return the internal built response
+
+        $response->getSfResponse()->send();
     }
 }
