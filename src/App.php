@@ -10,10 +10,14 @@
 namespace Luthier;
 
 use Luthier\Http\{Request, Response};
+use Luthier\Http\Middleware\AjaxMiddleware;
 use Luthier\Routing\{Router, RouteBuilder};
 use Symfony\Component\HttpFoundation\{Request as SfRequest, Response as SfResponse};
 use Symfony\Component\HttpKernel;
 use Symfony\Component\Routing;
+use Symfony\Component\Routing\Exception\ResourceNotFoundExceptio;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use \Whoops;
 
 class App
 {
@@ -97,7 +101,7 @@ class App
         {
             return call_user_func_array([$this->router, $method], $args);
         }
-        else if(in_array($method, ['group', 'middleware']))
+        else if(in_array($method, ['group', 'middleware', 'registerMiddleware']))
         {
             return call_user_func_array([$this->router, $method], $args);
         }
@@ -189,12 +193,24 @@ class App
      */
     public function __construct()
     {
+        // Loading essential functions
+        require_once __DIR__ . '/Functions.php';
+
+        // Adding essential objects to App singleton
         $this->request  = new Request();
         $this->response = new Response();
         $this->router   = new Router();
+
+        // Defining some basic middleware
+        RouteBuilder::registerMiddleware('ajax', AjaxMiddleware::class);
+
+        // Set the app instance as static variable
         self::$instance = &$this;
 
-        require_once __DIR__ . '/Functions.php';
+        // Whoops!
+        (new Whoops\Run)->pushHandler(new Whoops\Handler\PrettyPageHandler())
+            ->register();
+
     }
 
 
@@ -209,9 +225,7 @@ class App
      */
     public function run(SfRequest $request = null)
     {
-
         // Base request/response
-
         $request  = $request === null ? $this->request : $request;
         $response = $this->response;
 
@@ -262,7 +276,14 @@ class App
 
             $requestStack = [];
 
+            // Global middleware
             foreach(RouteBuilder::getContext('middleware')['global'] as $middleware)
+            {
+                $requestStack[] = $middleware;
+            }
+
+            // Route middleware
+            foreach($route->getMiddleware() as $middleware)
             {
                 $requestStack[] = $middleware;
             }
@@ -277,13 +298,17 @@ class App
             };
             self::$nextRequest = function($request, $response)
             {
-                [$middleware, $action] = (\Luthier\App::getRequestIterator())();
+                [$callback, $action] = (\Luthier\App::getRequestIterator())();
 
                 if($action !== NULL)
                 {
                     [$controller, $arguments] = $action;
                     return call_user_func_array($controller, $arguments);
                 }
+
+                $middleware = !is_callable($callback)
+                    ? RouteBuilder::getMiddleware($callback)
+                    : $callback;
 
                 return call_user_func_array( $middleware, [$request, $response, function($request,$response){
                     return \Luthier\App::continueRequest($request, $response);
@@ -292,7 +317,11 @@ class App
 
             if(count($requestStack) > 0)
             {
-                $responseResult = call_user_func_array($requestStack[0],[$request, $response, function($request,$response){
+                $middleware = !is_callable($requestStack[0])
+                    ? RouteBuilder::getMiddleware($requestStack[0])
+                    : $requestStack[0];
+
+                $responseResult = call_user_func_array($middleware,[$request, $response, function($request,$response){
                     return \Luthier\App::continueRequest($request, $response);
                 }]);
             }
@@ -301,24 +330,25 @@ class App
                 $responseResult = call_user_func_array($controller, $arguments);
             }
         }
-        catch(Routing\Exception\ResourceNotFoundException $e)
+        catch(ResourceNotFoundException|NotFoundHttpException $e)
         {
             return (new SfResponse('Not Found', 404))->send();
         }
         catch(\Exception $e)
         {
-            return (new SfResponse('An error occurred', 500))->send();
+            // TODO: Disabled uncaught exception error messages in production environments:
+            throw $e;
+
+            //return (new SfResponse('An error occurred', 500))->send();
         }
 
         // The route returned a Symfony response object? send it
-
         if($responseResult instanceof SfResponse)
         {
             return $responseResult->send();
         }
 
         // If not, return the internal built response
-
         $response->getSfResponse()->send();
     }
 }

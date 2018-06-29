@@ -10,6 +10,7 @@
 namespace Luthier\Routing;
 
 use Luthier\Routing\Router;
+use Luthier\Http\Middleware\MiddlewareInterface;
 
 class RouteBuilder
 {
@@ -27,6 +28,7 @@ class RouteBuilder
         'middleware' => [
             'route'  => [],
             'global' => [],
+            'alias'  => [],
         ],
         'namespace' => [],
         'prefix'    => [],
@@ -149,8 +151,7 @@ class RouteBuilder
     /**
      * Define a global middleware
      *
-     * @param  mixed        $middleware
-     * @param  mixed        $point (Optional)
+     * @param  mixed  $middleware
      *
      * @return mixed
      *
@@ -175,6 +176,23 @@ class RouteBuilder
 
 
     /**
+     * Register a new middleware alias
+     *
+     * @param  string  $name
+     * @param  mixed   $callback
+     *
+     * @return mixed
+     *
+     * @access public
+     * @static
+     */
+    public static function registerMiddleware(string $name, $middleware)
+    {
+        self::$context['middleware']['alias'][$name] = $middleware;
+    }
+
+
+    /**
      * Get RouteBuilder context var
      *
      * @param  string $context
@@ -187,6 +205,47 @@ class RouteBuilder
     public static function getContext(string $context)
     {
         return self::$context[$context];
+    }
+
+
+    /**
+     * Get a middleware instance from this alias
+     *
+     * @param  string  $name
+     *
+     * @return mixed
+     *
+     * @access public
+     * @static
+     */
+    public static function getMiddleware(string $name) : callable
+    {
+        if(!isset(self::$context['middleware']['alias'][$name]))
+        {
+            throw new \Exception('Unknown middleware"' . $name . '". Forgot register it?');
+        }
+
+        $middleware = self::$context['middleware']['alias'][$name];
+
+        if(!is_callable($middleware) && (is_string($middleware) || is_object($middleware)))
+        {
+            if(is_string($middleware) && class_exists($middleware))
+            {
+                $middleware = new $middleware();
+            }
+
+            if(!$middleware instanceof MiddlewareInterface)
+            {
+                throw new \Exception('The middleware "' . get_class($middleware) . '" MUST implement the '. MiddlewareInterface::class . ' interface' );
+            }
+
+            $middleware = function($request, $response, $next) use($middleware)
+            {
+                return $middleware->run($request, $response, $next);
+            };
+        }
+
+        return $middleware;
     }
 
 }

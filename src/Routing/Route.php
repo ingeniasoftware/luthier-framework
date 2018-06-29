@@ -398,7 +398,15 @@ class Route
 
     public function middleware($middleware)
     {
-        $this->middleware[] = $middleware;
+        if(is_array($middleware))
+        {
+            $this->middleware = array_merge($this->middleware, $middleware);
+        }
+        else
+        {
+            $this->middleware[] = $middleware;
+        }
+        return $this;
     }
 
 
