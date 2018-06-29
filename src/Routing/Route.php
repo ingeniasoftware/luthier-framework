@@ -239,13 +239,11 @@ class Route
         {
             $schemes = RouteBuilder::getContext('schemes');
 
-            foreach($schemes as $scheme)
+            if(!empty($schemes))
             {
-                if(!in_array($scheme, $this->schemes))
-                {
-                    $this->schemes[] = $scheme;
-                }
+                $this->schemes = $schemes[0];
             }
+
         }
 
         if($attributes !== NULL)
