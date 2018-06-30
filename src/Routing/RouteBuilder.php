@@ -134,8 +134,6 @@ class RouteBuilder
             array_pop(self::$context['middleware']['route']);
         }
 
-        // FIXME: Schemes set bug with array (Warning: strtolower() expects parameter 1 to be string)
-
         if(isset($attributes['schemes']))
         {
             array_pop(self::$context['schemes']);
@@ -149,7 +147,7 @@ class RouteBuilder
 
 
     /**
-     * Define a global middleware
+     * Define a global middleware callback or alias
      *
      * @param  mixed  $middleware
      *
@@ -160,6 +158,23 @@ class RouteBuilder
      */
     public static function middleware($middleware)
     {
+        if( count( func_get_args() ) == 2)
+        {
+            [$name, $middleware] = func_get_args();
+
+            if(!is_string($name))
+            {
+                throw new \BadArgumentException("The middleware alias must be a string");
+            }
+
+            if(!is_callable($middleware) && !class_exists($middleware))
+            {
+                throw new \BadArgumentException("Invalid middleware definition");
+            }
+
+            return self::$context['middleware']['alias'][$name] = $middleware;
+        }
+
         if(!is_array($middleware))
         {
             $middleware = [ $middleware ];
@@ -172,23 +187,6 @@ class RouteBuilder
                 self::$context['middleware']['global'][] = $_middleware;
             }
         }
-    }
-
-
-    /**
-     * Register a new middleware alias
-     *
-     * @param  string  $name
-     * @param  mixed   $callback
-     *
-     * @return mixed
-     *
-     * @access public
-     * @static
-     */
-    public static function registerMiddleware(string $name, $middleware)
-    {
-        self::$context['middleware']['alias'][$name] = $middleware;
     }
 
 
@@ -209,43 +207,47 @@ class RouteBuilder
 
 
     /**
-     * Get a middleware instance from this alias
+     * Get a middleware callable
      *
-     * @param  string  $name
+     * @param  string|callable $name
      *
      * @return mixed
      *
      * @access public
      * @static
      */
-    public static function getMiddleware(string $name) : callable
+    public static function getMiddleware($middleware) : callable
     {
-        if(!isset(self::$context['middleware']['alias'][$name]))
+        if(is_callable($middleware))
         {
-            throw new \Exception('Unknown middleware"' . $name . '". Forgot register it?');
+            return $middleware;
         }
 
-        $middleware = self::$context['middleware']['alias'][$name];
-
-        if(!is_callable($middleware) && (is_string($middleware) || is_object($middleware)))
+        if(is_string($middleware))
         {
-            if(is_string($middleware) && class_exists($middleware))
+            if(isset(self::$context['middleware']['alias'][$middleware]))
+            {
+                return self::getMiddleware(self::$context['middleware']['alias'][$middleware]);
+            }
+
+            if(class_exists($middleware))
             {
                 $middleware = new $middleware();
             }
-
-            if(!$middleware instanceof MiddlewareInterface)
+            else
             {
-                throw new \Exception('The middleware "' . get_class($middleware) . '" MUST implement the '. MiddlewareInterface::class . ' interface' );
+                throw new \Exception("Unknown \"$middleware\" middleware class/alias");
             }
-
-            $middleware = function($request, $response, $next) use($middleware)
-            {
-                return $middleware->run($request, $response, $next);
-            };
         }
 
-        return $middleware;
-    }
+        if(!$middleware instanceof MiddlewareInterface)
+        {
+            throw new \Exception('The middleware "' . get_class($middleware) . '" MUST implement the '. MiddlewareInterface::class . ' interface' );
+        }
 
+        return function($request, $response, $next) use($middleware)
+        {
+            return $middleware->run($request, $response, $next);
+        };
+    }
 }

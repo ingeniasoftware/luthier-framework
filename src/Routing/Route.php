@@ -598,13 +598,36 @@ class Route
     /**
      * Get route accepted HTTP schemes
      *
-     * @return mixed
+     * @return array
      *
      * @access public
      */
     public function getSchemes()
     {
         return $this->schemes;
+    }
+
+
+    /**
+     * Return all route sticky parameters
+     *
+     * @return array
+     *
+     * @access public
+     */
+    public function getStickyParams()
+    {
+        $sticky = [];
+
+        foreach($this->params as $param)
+        {
+            if($param->isSticky())
+            {
+                $sticky[] = $param->getName();
+            }
+        }
+
+        return $sticky;
     }
 
 
@@ -639,6 +662,7 @@ class Route
         return $this;
     }
 
+
     /**
      * Set route host (method chaining)
      *
@@ -652,6 +676,7 @@ class Route
     {
         return $this->host($host);
     }
+
 
     /**
      * Set route accepted HTTP schemes (method chaining)

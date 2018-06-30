@@ -15,9 +15,12 @@ class AjaxMiddleware implements MiddlewareInterface
 {
     public function run($request, $response, $next)
     {
-        if($request->server('HTTP_X_REQUESTED_WITH') === NULL || strtolower($request->server('HTTP_X_REQUESTED_WITH')) !== 'xmlhttprequest')
+        if(!$request->isAjax())
         {
-            throw new NotFoundHttpException('Not found');
+            throw new NotFoundHttpException(
+                getenv('APP_ENV') == 'development'
+                    ? 'This route is only available under AJAX requests'
+                    : 'Not found');
         }
     }
 }

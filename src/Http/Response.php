@@ -10,6 +10,8 @@
 namespace Luthier\Http;
 
 use Symfony\Component\HttpFoundation\Response as SfResponse;
+use Symfony\Component\HttpFoundation\RedirectResponse;
+
 
 class Response
 {
@@ -37,19 +39,6 @@ class Response
 
 
     /**
-     * Get Symfony response object
-     *
-     * @return SfResponse
-     *
-     * @access public
-     */
-    public function getSfResponse()
-    {
-        return $this->sfResponse;
-    }
-
-
-    /**
      * __call() magic method
      *
      * @param  mixed  $method
@@ -69,6 +58,19 @@ class Response
         {
             throw new \Exception("Undefined method App:response->{$method}()");
         }
+    }
+
+
+    /**
+     * Get Symfony response object
+     *
+     * @return SfResponse
+     *
+     * @access public
+     */
+    public function getSfResponse()
+    {
+        return $this->sfResponse;
     }
 
 
@@ -105,5 +107,41 @@ class Response
     {
         $this->sfResponse->setContent($this->sfResponse->getContent() . $content);
         return $this;
+    }
+
+
+    /**
+     * Set the current response as a RedirectResponse with the provided parameters
+     *
+     * @param  string   $url
+     * @param  int      $status
+     * @param  array    $headers (Optional)
+     *
+     * @return mixed
+     *
+     * @access public
+     */
+    public function redirect(string $url, int $status = 302, array $headers = [])
+    {
+        $this->sfResponse = new RedirectResponse($url, $status, $headers);
+        return $this;
+    }
+
+
+    /**
+     * Set the current response as a RedirectResponse to a specific route
+     *
+     * @param  string   $route
+     * @param  array    $params
+     * @param  int      $status (Optional)
+     * @param  array    $headers (Optional)
+     *
+     * @return mixed
+     *
+     * @access public
+     */
+    public function routeRedirect(string $route, array $params = [], int $status = 302, array $headers = [])
+    {
+        return $this->redirect( route($route, $params), $status, $headers );
     }
 }

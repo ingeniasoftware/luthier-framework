@@ -9,15 +9,15 @@
 
 namespace Luthier;
 
-use Luthier\Http\{Request, Response};
-use Luthier\Http\Middleware\AjaxMiddleware;
+use Luthier\Http\{Request, Response, ResponseIterator};
 use Luthier\Routing\{Router, RouteBuilder};
 use Symfony\Component\HttpFoundation\{Request as SfRequest, Response as SfResponse};
 use Symfony\Component\HttpKernel;
 use Symfony\Component\Routing;
+use Symfony\Component\Dotenv\Dotenv;
+use Symfony\Component\Dotenv\Exception\PathException;
 use Symfony\Component\Routing\Exception\ResourceNotFoundExceptio;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use \Whoops;
 
 class App
 {
@@ -31,27 +31,6 @@ class App
      * @access private
      */
     private static $instance;
-
-
-    /**
-     * Request middleware iterator
-     *
-     * @var static $requestIterator
-     *
-     * @access private
-     */
-    private static $requestIterator;
-
-
-
-    /**
-     * Next request closure
-     *
-     * @var static $nextRequest
-     *
-     * @access private
-     */
-    private static $nextRequest;
 
 
     /**
@@ -85,9 +64,65 @@ class App
 
 
     /**
+     * Class constructor
+     *
+     * @param  string  $envDir Directory where look for the .env file used by the app
+     *
+     * @return mixed
+     *
+     * @access public
+     */
+    public function __construct(string $envDir = null)
+    {
+        $dotenv = new Dotenv();
+
+        try
+        {
+            $dotenv->load( ($envDir !== NULL ? $envDir : '') . '.env' );
+        }
+        catch(PathException $e)
+        {
+            (new SfResponse('Error: Unable to find your application environment file', 500))->send();
+            exit(-1);
+        }
+        catch(\Exception $e)
+        {
+            (new SfResponse('Error: Unable to parse your application environment file', 500))->send();
+            exit(-1);
+        }
+
+        $environment = getenv('APP_ENV');
+
+        if(!in_array($environment, ['development','production'], TRUE))
+        {
+            (new SfResponse('Error: Your application environment configuration is missing or invalid', 500))->send();
+            exit(-1);
+        }
+
+        // Loading essential functions
+        require_once __DIR__ . '/Functions.php';
+
+        // Adding essential objects to App singleton
+        $this->request    = new Request();
+        $this->response   = new Response();
+        $this->router     = new Router();
+
+        // Defining some basic middleware
+        RouteBuilder::middleware('ajax', Http\Middleware\AjaxMiddleware::class);
+
+        // Set the app instance as static variable
+        self::$instance = &$this;
+
+        // Whoops!
+        (new \Whoops\Run)->pushHandler(new \Whoops\Handler\PrettyPageHandler())
+            ->register();
+    }
+
+
+    /**
      * __call() magic method
      *
-     * @param  mixed $method
+     * @param  string $method
      * @param  mixed $args
      *
      * @return mixed
@@ -97,17 +132,32 @@ class App
      */
     public function __call($method, $args)
     {
+        // Is a HTTP Verb?
         if(in_array(strtoupper($method), RouteBuilder::HTTP_VERBS) || $method == 'match')
         {
             return call_user_func_array([$this->router, $method], $args);
         }
-        else if(in_array($method, ['group', 'middleware', 'registerMiddleware']))
+        // Is a RouteBuilder method?
+        else if(in_array($method, ['group', 'middleware']))
         {
+            // Calling a middleware inside a dispatched route? Dispatch it
+            if($method == 'middleware' && $this->router->getCurrentRoute() !== NULL && count($args) == 0)
+            {
+                if(!is_string($args[0]))
+                {
+                    throw new \BadMethodCallException("Invalid middleware name");
+                }
+
+                return ResponseIterator::evaluateIntermediaryResponse(
+                    call_user_func_array([$this->router,'runMiddleware'],[$args[0], $this->request, $this->response, function($request, $response){}])
+                );
+            }
+            // If not, just call the RouteBuilder method
             return call_user_func_array([$this->router, $method], $args);
         }
         else
         {
-            throw new \Exception("Undefined method App::{$method}() ");
+            throw new \BadMethodCallException("Undefined method App::{$method}() ");
         }
     }
 
@@ -115,7 +165,7 @@ class App
     /**
      * __get() magic method
      *
-     * @param  mixed  $property
+     * @param  string  $property
      *
      * @return mixed
      *
@@ -124,17 +174,19 @@ class App
      */
     public function __get($property)
     {
+        // Getting a protected/private property of this class?
         if(isset($this->{$property}))
         {
             return $this->{$property};
         }
+        // Getting the "route" property? Return the current route
         else if($property == 'route')
         {
             return $this->router->getCurrentRoute();
         }
         else
         {
-            throw new \Exception("Undefined property App::$property ");
+            throw new \InvalidArgumentException("Undefined property App::$property ");
         }
     }
 
@@ -154,105 +206,39 @@ class App
 
 
     /**
-     * Returns the request middleware stack iterator
-     *
-     * @return mixed
-     *
-     * @access public
-     * @static
-     */
-    public static function getRequestIterator()
-    {
-        return self::$requestIterator;
-    }
-
-
-    /**
-     * Continue to next middleware, or final request if no more middleware in the request
-     * stack
-     *
-     * @param  mixed $request
-     * @param  mixed $response
-     *
-     * @return mixed
-     *
-     * @access public
-     * @static
-     */
-    public static function continueRequest($request, $response)
-    {
-        return call_user_func_array(self::$nextRequest, [$request, $response]);
-    }
-
-    /**
-     * Class constructor
-     *
-     * @return mixed
-     *
-     * @access public
-     */
-    public function __construct()
-    {
-        // Loading essential functions
-        require_once __DIR__ . '/Functions.php';
-
-        // Adding essential objects to App singleton
-        $this->request  = new Request();
-        $this->response = new Response();
-        $this->router   = new Router();
-
-        // Defining some basic middleware
-        RouteBuilder::registerMiddleware('ajax', AjaxMiddleware::class);
-
-        // Set the app instance as static variable
-        self::$instance = &$this;
-
-        // Whoops!
-        (new Whoops\Run)->pushHandler(new Whoops\Handler\PrettyPageHandler())
-            ->register();
-
-    }
-
-
-    /**
      * Run the application and dispatches the response
      *
-     * @param  SfRequest $request Custom request object (optional)
-     *
      * @return mixed
      *
      * @access public
      */
-    public function run(SfRequest $request = null)
+    public function run()
     {
-        // Base request/response
-        $request  = $request === null ? $this->request : $request;
-        $response = $this->response;
+        $request   = $this->request;
+        $sfRequest = $request->getSfRequest();
+        $response  = $this->response;
+        $requestContext = new Routing\RequestContext();
 
         try
         {
-            // Symfony Router Component url match
+            // Matching the current url to a route and setting up their attributes
             $match = (
                 new Routing\Matcher\UrlMatcher(
-                    $this->router->getCompiledRoutes(),
-                    (new Routing\RequestContext())->fromRequest($request->getSfRequest())
+                    ($this->router)($requestContext),
+                    $requestContext->fromRequest($sfRequest)
                 )
-            )->match($request->getSfRequest()->getPathInfo());
+            )->match($sfRequest->getPathInfo());
 
-            $request->getSfRequest()->attributes->add($match);
+            $sfRequest->attributes->add($match);
 
-            // Founded? Set the current route
-            $route = $match['_instance'];
-            $this->router->setCurrentRoute($route);
-
-            // Resolve controller/arguments (again, with the Symfony Router Component)
             $controller = (new HttpKernel\Controller\ControllerResolver())
-                ->getController($request->getSfRequest());
+                ->getController($sfRequest);
 
             $arguments  = (new HttpKernel\Controller\ArgumentResolver())
-                ->getArguments($request->getSfRequest(), $controller);
+                ->getArguments($sfRequest, $controller);
 
-            // Set the router parameter values from current url
+            // Removing NULL arguments used in the callback to allow default arguments
+            // values in the route definitions
             foreach($arguments as $i => $arg)
             {
                 if($arg === null)
@@ -261,10 +247,11 @@ class App
                 }
             }
 
-            $paramOffset = 0;
+            $route = $match['_instance'];
 
-            // Build the request stack array
-            foreach( explode('/', trim($request->getSfRequest()->getPathInfo(), '/')) as $i => $urlSegment )
+            // Now we assign the matched route parameters values from the url
+            $paramOffset = 0;
+            foreach( explode('/', trim($sfRequest->getPathInfo(), '/')) as $i => $urlSegment )
             {
                 $routeSegment = explode('/', $route->getFullPath())[$i];
                 if(substr($routeSegment,0,1) == '{' && substr($routeSegment,-1) == '}')
@@ -274,81 +261,38 @@ class App
                 }
             }
 
-            $requestStack = [];
+            $this->router->setCurrentRoute($route);
 
-            // Global middleware
-            foreach(RouteBuilder::getContext('middleware')['global'] as $middleware)
-            {
-                $requestStack[] = $middleware;
-            }
-
-            // Route middleware
-            foreach($route->getMiddleware() as $middleware)
-            {
-                $requestStack[] = $middleware;
-            }
-
-            // Set the request stack iterator and next request callback
-            self::$requestIterator = function() use($requestStack, $controller, $arguments)
-            {
-                static $r = 0;
-                return isset($requestStack[++$r])
-                    ? [ $requestStack[$r] , NULL ]
-                    : [ NULL, [$controller, $arguments] ];
-            };
-            self::$nextRequest = function($request, $response)
-            {
-                [$callback, $action] = (\Luthier\App::getRequestIterator())();
-
-                if($action !== NULL)
-                {
-                    [$controller, $arguments] = $action;
-                    return call_user_func_array($controller, $arguments);
-                }
-
-                $middleware = !is_callable($callback)
-                    ? RouteBuilder::getMiddleware($callback)
-                    : $callback;
-
-                return call_user_func_array( $middleware, [$request, $response, function($request,$response){
-                    return \Luthier\App::continueRequest($request, $response);
-                }]);
-            };
-
-            if(count($requestStack) > 0)
-            {
-                $middleware = !is_callable($requestStack[0])
-                    ? RouteBuilder::getMiddleware($requestStack[0])
-                    : $requestStack[0];
-
-                $responseResult = call_user_func_array($middleware,[$request, $response, function($request,$response){
-                    return \Luthier\App::continueRequest($request, $response);
-                }]);
-            }
-            else
-            {
-                $responseResult = call_user_func_array($controller, $arguments);
-            }
+            // Prepare and dispatch the response
+            $responseIterator = new ResponseIterator($request, $response, $route, $controller, $arguments);
+            $responseResult   = $responseIterator->dispatch();
         }
         catch(ResourceNotFoundException|NotFoundHttpException $e)
         {
+            if(getenv('APP_ENV') == 'development')
+            {
+                throw $e;
+            }
+
             return (new SfResponse('Not Found', 404))->send();
         }
         catch(\Exception $e)
         {
-            // TODO: Disabled uncaught exception error messages in production environments:
-            throw $e;
+            if(getenv('APP_ENV') == 'development')
+            {
+                throw $e;
+            }
 
-            //return (new SfResponse('An error occurred', 500))->send();
+            return (new SfResponse('An error occurred', 500))->send();
         }
 
-        // The route returned a Symfony response object? send it
+        // Is the response result a Symfony Response object? send it directly
         if($responseResult instanceof SfResponse)
         {
             return $responseResult->send();
         }
 
-        // If not, return the internal built response
+        // If not, just send the response content stored at this point
         $response->getSfResponse()->send();
     }
 }

@@ -10,8 +10,12 @@
 namespace Luthier\Routing;
 
 use Luthier\Routing\Route as LuthierRoute;
+use Symfony\Component\Routing\RequestContext;
+use Symfony\Component\Routing\Generator\UrlGenerator;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Routing\Route;
 use Symfony\Component\Routing\RouteCollection;
+use Symfony\Component\HttpFoundation\Request;
 
 class Router
 {
@@ -23,7 +27,20 @@ class Router
      *
      * @access protected
      */
-    protected $routes = [];
+    protected $routes = [
+        'objects' => [],
+        'names'   => []
+    ];
+
+
+    /**
+     * Compiled routes
+     *
+     * @var $compiledRoutes
+     *
+     * @access protected
+     */
+    protected $compiledRoutes;
 
 
     /**
@@ -36,11 +53,35 @@ class Router
     protected $currentRoute = null;
 
 
+
+    /**
+     * Symfony route generator
+     *
+     * @var $routeGenerator
+     *
+     * @access protected
+     */
+    protected $routeGenerator;
+
+
+    /**
+     * Class constructor
+     *
+     * @return mixed
+     *
+     * @access public
+     */
+    public function __construct()
+    {
+        $this->compiledRoutes = new RouteCollection();
+    }
+
+
     /**
      * __call() magic method
      *
-     * @param  mixed        $method
-     * @param  array        $args
+     * @param  mixed   $method
+     * @param  array   $args
      *
      * @return mixed
      *
@@ -57,9 +98,45 @@ class Router
 
         if($route instanceof \Luthier\Routing\Route)
         {
-            $this->routes[] = $route;
+            $this->routes['objects'][] = $route;
             return $route;
         }
+    }
+
+
+    /**
+     * __invoke() magic method
+     *
+     * @return mixed
+     *
+     * @access public
+     */
+    public function __invoke(RequestContext $requestContext)
+    {
+        foreach($this->routes['objects'] as $i => $luthierRoute)
+        {
+            [$name, $route] = $luthierRoute->compile();
+
+            if(empty($name))
+            {
+                $name = '__anonymous_route' . str_pad($i,4,'0',STR_PAD_LEFT);
+            }
+            else
+            {
+                if(isset($this->routes['names'][$name]))
+                {
+                    throw new \Exception("Duplicated '{$luthierRoute->getName()}' route");
+                }
+
+                $this->routes['names'][$name] = $luthierRoute->getStickyParams();
+            }
+
+            $this->compiledRoutes->add($name, $route);
+        }
+
+       $this->routeGenerator = new UrlGenerator($this->compiledRoutes, $requestContext);
+
+        return $this->compiledRoutes;
     }
 
 
@@ -85,21 +162,7 @@ class Router
      */
     public function getCompiledRoutes()
     {
-        $routes = new RouteCollection();
-
-        foreach($this->routes as $i => $route)
-        {
-            [$name, $route] = $route->compile();
-
-            if(empty($name))
-            {
-                $name = '__anonymous_route' . $i;
-            }
-
-            $routes->add($name, $route);
-        }
-
-        return $routes;
+        return $this->compiledRoutes;
     }
 
 
@@ -130,4 +193,52 @@ class Router
         return $this->currentRoute;
     }
 
+
+    /**
+     * Get a route by name
+     *
+     * @param  string       $name
+     * @param  array        $args
+     * @param  bool         $absoluteUrl
+     *
+     * @return mixed
+     *
+     * @access public
+     */
+    public function getRouteByName(string $name, array $args = [], bool $absoluteUrl = TRUE)
+    {
+        $route  = $this->currentRoute;
+
+        if(!isset($this->routes['names'][$name]))
+        {
+            throw new \Exception("Undefined \"$name\" route");
+        }
+
+        foreach($this->routes['names'][$name] as $stickyParam)
+        {
+            if($route->hasParam($stickyParam))
+            {
+                $args[$stickyParam] = $route->param($stickyParam);
+            }
+        }
+
+        return $this->routeGenerator->generate(
+            $name,
+            $args,
+            $absoluteUrl ? UrlGeneratorInterface::ABSOLUTE_URL : NULL
+        );
+    }
+
+
+    /**
+     * Run middleware
+     *
+     * @return mixed
+     *
+     * @access public
+     */
+    public function runMiddleware($name, $request, $response, $next)
+    {
+        return call_user_func_array(RouteBuilder::getMiddleware($name), [$request, $response, $next]);
+    }
 }
