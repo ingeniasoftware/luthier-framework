@@ -164,12 +164,12 @@ class RouteBuilder
 
             if(!is_string($name))
             {
-                throw new \BadArgumentException("The middleware alias must be a string");
+                throw new \InvalidArgumentException("The middleware alias must be a string");
             }
 
             if(!is_callable($middleware) && !class_exists($middleware))
             {
-                throw new \BadArgumentException("Invalid middleware definition");
+                throw new \InvalidArgumentException("Invalid middleware definition. Must be a valid callback." . (is_string($middleware) ? " (Does the '$middleware' class exists?)" : ''));
             }
 
             return self::$context['middleware']['alias'][$name] = $middleware;
