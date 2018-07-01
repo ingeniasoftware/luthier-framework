@@ -109,6 +109,7 @@ class App
 
         // Defining some basic middleware
         RouteBuilder::middleware('ajax', Http\Middleware\AjaxMiddleware::class);
+        RouteBuilder::middleware('cli', Http\Middleware\CliMiddleware::class);
 
         // Set the app instance as static variable
         self::$instance = &$this;

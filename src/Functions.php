@@ -23,3 +23,15 @@ function route(string $name, array $args = [])
 {
     return luthier()->router->getRouteByName($name, $args);
 }
+
+
+/**
+ * Checks if is a CLI request
+ * (Taken from CodeIgniter 'is_cli()' code)
+ *
+ * @return mixed
+ */
+function is_cli()
+{
+    return (PHP_SAPI === 'cli' OR defined('STDIN'));
+}

@@ -106,4 +106,17 @@ class Request
     {
         return strtolower($this->server('HTTP_X_REQUESTED_WITH','')) === 'xmlhttprequest';
     }
+
+
+    /**
+     * Check if the current request is a CLI request (alias of using the is_cli() function)
+     *
+     * @return mixed
+     *
+     * @access public
+     */
+    public function isCli()
+    {
+        return is_cli();
+    }
 }
