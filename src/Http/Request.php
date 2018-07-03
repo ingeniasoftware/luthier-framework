@@ -14,25 +14,30 @@ use Symfony\Component\HttpFoundation\Request as SfRequest;
 class Request
 {
     /**
-     * Symfony response object
+     * Symfony request object
      *
-     * @var $sfRequest
+     * @var $request
      *
      * @access protected
      */
-    protected $sfRequest;
+    protected $request;
+
 
 
     /**
      * Class constructor
      *
+     * @param  SfRequest $request Symfony Request object (optional)
+     *
      * @return mixed
      *
      * @access public
      */
-    public function __construct()
+    public function __construct(SfRequest $request = NULL)
     {
-        $this->sfRequest = SfRequest::createFromGlobals();
+        $this->request = $request === NULL
+            ? SfRequest::createFromGlobals()
+            : $request;
     }
 
 
@@ -57,6 +62,7 @@ class Request
             'file'       => 'files',
             'session'    => 'session',
             'header'     => 'header',
+            'cookie'     => 'cookies',
         ];
 
         if(in_array($property, array_keys($httpContainers)))
@@ -66,19 +72,18 @@ class Request
 
             // ... return their values directly
             return $name !== NULL
-                ? $this->sfRequest->{$httpContainers[$property]}->get($name, $default)
-                : $this->sfRequest->{$httpContainers[$property]}->all();
+                ? $this->request->{$httpContainers[$property]}->get($name, $default)
+                : $this->request->{$httpContainers[$property]}->all();
         }
         // Is a Symfony Request method? call it
-        else if( method_exists($this->sfRequest, $property) )
+        else if( method_exists($this->request, $property) )
         {
-            return call_user_func_array([$this->sfRequest, $property], $args);
+            return call_user_func_array([$this->request, $property], $args);
         }
         else
         {
-            throw new \Exception("Undefined method App:request->{$property}()");
+            throw new \BadMethodCallException ("Undefined method Request::{$property}()");
         }
-
     }
 
 
@@ -89,9 +94,9 @@ class Request
      *
      * @access public
      */
-    public function getSfRequest()
+    public function getRequest()
     {
-        return $this->sfRequest;
+        return $this->request;
     }
 
 
@@ -117,6 +122,6 @@ class Request
      */
     public function isCli()
     {
-        return is_cli();
+        return (PHP_SAPI === 'cli' OR defined('STDIN'));;
     }
 }

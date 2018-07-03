@@ -9,8 +9,9 @@
 
 namespace Luthier\Http;
 
+use Luthier\Framework;
 use Symfony\Component\HttpFoundation\Response as SfResponse;
-use Symfony\Component\HttpFoundation\RedirectResponse;
+use Symfony\Component\HttpFoundation\{RedirectResponse, JsonResponse, StreamedResponse, BinaryFileResponse};
 
 
 class Response
@@ -18,11 +19,11 @@ class Response
     /**
      * Symfony response object
      *
-     * @var $sfResponse
+     * @var $response
      *
      * @access protected
      */
-    protected $sfResponse;
+    protected $response;
 
 
     /**
@@ -32,9 +33,11 @@ class Response
      *
      * @access public
      */
-    public function __construct()
+    public function __construct(SfResponse $response = NULL)
     {
-        $this->sfResponse = new SfResponse();
+        $this->response =  $response === NULL
+            ? new SfResponse()
+            : $response;
     }
 
 
@@ -50,13 +53,13 @@ class Response
      */
     public function __call($method, $args)
     {
-        if(method_exists($this->sfResponse, $method) )
+        if(method_exists($this->response, $method) )
         {
-            return call_user_func_array([$this->sfResponse, $method], $args);
+            return call_user_func_array([$this->response, $method], $args);
         }
         else
         {
-            throw new \Exception("Undefined method App:response->{$method}()");
+           throw new \BadMethodCallException ("Undefined method Response::{$property}()");
         }
     }
 
@@ -68,27 +71,66 @@ class Response
      *
      * @access public
      */
-    public function getSfResponse()
+    public function getResponse()
     {
-        return $this->sfResponse;
+        return $this->response;
     }
 
 
     /**
      * Sets the response to a JSON response
      *
-     * @param  array $data
+     * @param  string|array $data
      * @param  int   $status The HTTP response code (200 by default)
      *
-     * @return mixed
+     * @return SfResponse
      *
      * @access public
      */
-    public function json(array $data, int $status = 200)
+    public function json($data, int $status = 200, array $headers = [])
     {
-        $this->sfResponse->headers->set('Content-Type', 'application/json');
-        $this->sfResponse->setStatusCode($status);
-        $this->sfResponse->setContent(json_encode($data));
+        $this->response = new JsonResponse(is_array($data) ? json_encode($data) : $data, $status, $headers, !is_string($data));
+        return $this;
+    }
+
+
+    /**
+     * Set the response to a streamed response
+     *
+     * @param  callable     $callback
+     * @param  int          $status
+     * @param  array        $headers
+     *
+     * @return SfResponse
+     *
+     * @access public
+     */
+    public function stream(callable $callback, int $status = 200, array $headers = [])
+    {
+        $this->response = new StreamedResponse($callback, $status, $headers);
+        return $this;
+    }
+
+
+    /**
+     * Set the response to a file stream response
+     *
+     * @param  mixed        $file
+     * @param  int          $status
+     * @param  array        $headers
+     * @param  bool         $public
+     * @param  string       $contentDisposition
+     * @param  bool         $autoEtag
+     * @param  bool         $autoLastModified
+     *
+     * @return SfResponse
+     *
+     * @access public
+     */
+    public function file($file, int $status = 200, array $headers = [], bool $public = true, string $contentDisposition = null, bool $autoEtag = false, bool $autoLastModified = true)
+    {
+        $this->response = new BinaryFileResponse($file, $status, $headers, $public, $contentDisposition, $autoEtag, $autoLastModified);
+        return $this;
     }
 
 
@@ -105,7 +147,7 @@ class Response
      */
     public function write(string $content)
     {
-        $this->sfResponse->setContent($this->sfResponse->getContent() . $content);
+        $this->response->setContent($this->response->getContent() . $content);
         return $this;
     }
 
@@ -123,7 +165,7 @@ class Response
      */
     public function redirect(string $url, int $status = 302, array $headers = [])
     {
-        $this->sfResponse = new RedirectResponse($url, $status, $headers);
+        $this->response = new RedirectResponse($url, $status, $headers);
         return $this;
     }
 
@@ -140,8 +182,14 @@ class Response
      *
      * @access public
      */
-    public function routeRedirect(string $route, array $params = [], int $status = 302, array $headers = [])
+    public function redirectToRoute(string $route, array $params = [], int $status = 302, array $headers = [])
     {
-        return $this->redirect( route($route, $params), $status, $headers );
+        $router =  Framework::getInstance()->router;
+
+        return $this->redirect(
+            $router->getRouteByName($route, $params),
+            $status,
+            $headers
+        );
     }
 }
