@@ -9,8 +9,10 @@
 
 namespace Luthier\Http;
 
-use Luthier\App;
-use Luthier\Routing\{Route,RouteBuilder};
+use Luthier\Framework;
+use Luthier\Container;
+use Luthier\Application;
+use Luthier\Routing\{Route,Router};
 use Symfony\Component\HttpFoundation\Response as SfResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 
@@ -37,13 +39,13 @@ class ResponseIterator
 
 
     /**
-     * Sub-request count
+     * Middleware queue index
      *
-     * @var static $count
+     * @var static $index
      *
      * @access private
      */
-    private static $count = 0;
+    private static $index = 0;
 
 
     /**
@@ -57,7 +59,7 @@ class ResponseIterator
 
 
     /**
-     * The route (final) response callback to be invoked
+     * The route (final) response callback to be dispatched to the framework
      *
      * @var static $routeResponse
      *
@@ -84,15 +86,15 @@ class ResponseIterator
         $this->request  = $request;
         $this->response = $response;
 
-        self::$middlewareQueue = array_merge(RouteBuilder::getContext('middleware')['global'], $route->getMiddleware());
-        self::$routeResponse   = [$controller, $arguments];
+        self::$middlewareQueue = array_merge(Router::getContext('middleware')['global'], $route->getMiddleware());
+        self::$routeResponse = [$controller, $arguments];
     }
 
 
     /**
      * Dispatch the initial response
      *
-     * If no middleware present, only the route callback will be invoked and returned
+     * (If no middleware present, only the route callback will be dispatched)
      *
      * @return mixed
      *
@@ -104,34 +106,35 @@ class ResponseIterator
         {
             [$request, $response] = [$this->request, $this->response];
 
-            $middleware = RouteBuilder::getMiddleware(self::$middlewareQueue[0]);
+            $middleware = Router::getMiddleware(self::$middlewareQueue[0]);
 
-            return self::evaluateIntermediaryResponse(call_user_func_array($middleware,[$request, $response, function($request,$response){
+            return self::intermediaryResponse(call_user_func_array($middleware,[$request, $response, function($request,$response){
                 return \Luthier\Http\ResponseIterator::next($request, $response);
             }]));
         }
         else
         {
             [$controller, $method] = self::$routeResponse;
+            self::bindApp($controller);
+
             return call_user_func_array($controller, $method);
         }
     }
 
 
     /**
-     * Evaluates an intermediary response (for example, a middleware) and stops the
-     * queue if necessary
+     * Evaluates a middleware response
      *
-     * @param  mixed        $responseResult
+     * @param  mixed  $responseResult
      *
      * @return mixed
      *
      * @access public
      * @static
      */
-    public static function evaluateIntermediaryResponse($responseResult)
+    public static function intermediaryResponse($responseResult)
     {
-        $response = App::getInstance()->response->getSfResponse();
+        $response = Framework::getInstance()->response->getResponse();
 
         if($responseResult instanceof SfResponse)
         {
@@ -150,8 +153,54 @@ class ResponseIterator
     }
 
 
+
     /**
-     * Callback to the next middleware in the queue (when is called inside a middleware)
+     * Bind the current Application singleton to the closure
+     *
+     * @param  mixed  $controller (Passed by reference)
+     *
+     * @return mixed
+     *
+     * @access private
+     * @static
+     */
+    private static function bindApp(&$controller)
+    {
+        if($controller instanceof \Closure)
+        {
+            $luthier = Framework::getInstance();
+
+            $app = new Application(
+                $luthier->getContainer()->getPsrContainer(),
+                $luthier->route,
+                $luthier->request,
+                $luthier->response
+            );
+
+            $controller = \Closure::bind($controller, $app, Application::class);
+        }
+    }
+
+
+    /**
+     * Returns the current middleware in the queue
+     *
+     * @return mixed
+     *
+     * @access public
+     * @static
+     */
+    public static function iterate()
+    {
+        return isset(self::$middlewareQueue[++self::$index])
+            ? [ self::$middlewareQueue[self::$index] , NULL ]
+            : [ NULL, self::$routeResponse ];
+    }
+
+
+    /**
+     * Returns a callback of the next middleware in the queue based in the current
+     * iterator index
      *
      * @param  mixed  $request
      * @param  mixed  $response
@@ -163,34 +212,20 @@ class ResponseIterator
      */
     public static function next($request, $response)
     {
-        [$callback, $action] = self::iterate();
+        [$currentMiddleware, $finalResponse] = self::iterate();
 
-        if($action !== NULL)
+        if($finalResponse !== NULL)
         {
-            [$controller, $arguments] = $action;
+            [$controller, $arguments] = $finalResponse;
+            self::bindApp($controller);
+
             return call_user_func_array($controller, $arguments);
         }
 
-        $middleware = RouteBuilder::getMiddleware($callback);
+        $middleware = Router::getMiddleware($currentMiddleware);
 
         return call_user_func_array($middleware, [$request, $response, function($request,$response){
             return \Luthier\Http\ResponseIterator::next($request, $response);
         }]);
-    }
-
-
-    /**
-     * Return the next middleware in the queue
-     *
-     * @return mixed
-     *
-     * @access public
-     * @static
-     */
-    public static function iterate()
-    {
-        return isset(self::$middlewareQueue[++self::$count])
-            ? [ self::$middlewareQueue[self::$count] , NULL ]
-            : [ NULL, self::$routeResponse ];
     }
 }

@@ -157,7 +157,7 @@ class Route
     {
         if($methods == 'any')
         {
-            $methods = RouteBuilder::HTTP_VERBS;
+            $methods = Router::HTTP_VERBS;
         }
         elseif(is_string($methods))
         {
@@ -188,38 +188,33 @@ class Route
             ? $route[2]
             : NULL;
 
-        if(!empty(RouteBuilder::getContext('prefix')))
+        if(!empty(Router::getContext('prefix')))
         {
-            $prefixes = RouteBuilder::getContext('prefix');
-
+            $prefixes = Router::getContext('prefix');
             foreach($prefixes as $prefix)
             {
                 $this->prefix .= trim($prefix,'/') != ''
                      ? '/' .trim($prefix, '/')
                      : '';
             }
-
             $this->prefix = trim($this->prefix,'/');
         }
 
-        if(!empty(RouteBuilder::getContext('namespace')))
+        if(!empty(Router::getContext('namespace')))
         {
-            $namespaces = RouteBuilder::getContext('namespace');
-
+            $namespaces = Router::getContext('namespace');
             foreach($namespaces as $namespace)
             {
                 $this->namespace .= trim($namespace, '/') != ''
                     ? '/' .trim($namespace, '/')
                     : '';
             }
-
             $this->namespace = trim($this->namespace,'/');
         }
 
-        if(!empty(RouteBuilder::getContext('middleware')['route']))
+        if(!empty(Router::getContext('middleware')['route']))
         {
-            $middlewares = RouteBuilder::getContext('middleware')['route'];
-
+            $middlewares = Router::getContext('middleware')['route'];
             foreach($middlewares as $middleware)
             {
                 if(!in_array($middleware, $this->middleware))
@@ -229,21 +224,19 @@ class Route
             }
         }
 
-        if(!empty(RouteBuilder::getContext('host')))
+        if(!empty(Router::getContext('host')))
         {
-            $host = RouteBuilder::getContext('host')[0];
+            $host = Router::getContext('host')[0];
             $this->host = $host;
         }
 
-        if(!empty(RouteBuilder::getContext('schemes')))
+        if(!empty(Router::getContext('schemes')))
         {
-            $schemes = RouteBuilder::getContext('schemes');
-
+            $schemes = Router::getContext('schemes');
             if(!empty($schemes))
             {
                 $this->schemes = $schemes[0];
             }
-
         }
 
         if($attributes !== NULL)
@@ -252,24 +245,21 @@ class Route
             {
                 $this->namespace = (!empty($this->namespace) ? '/' : '' ) . trim($attributes['namespace'], '/');
             }
-
             if(isset($attributes['prefix']))
             {
                 $this->prefix .= (!empty($this->prefix) ? '/' : '' ) . trim($attributes['prefix'], '/');
             }
-
             if(isset($attributes['middleware']))
             {
                 if(is_string($attributes['middleware']))
                 {
                     $attributes['middleware'] = [ $attributes['middleware'] ];
                 }
-
                 $this->middleware = array_merge($this->middleware, array_unique($attributes['middleware']));
             }
         }
 
-        $params         = [];
+        $params = [];
         $this->fullPath = [];
 
         $_fullpath = trim($this->prefix,'/') != ''
@@ -310,7 +300,7 @@ class Route
                     }
                 }
 
-                $this->params[]   = $param;
+                $this->params[] = $param;
                 $this->fullPath[] = '{' . $param->getName() . ( $param->isOptional() ? '?' : '') . '}';
             }
             else
@@ -437,6 +427,20 @@ class Route
     public function schemes(array $schemes)
     {
         $this->schemes = $schemes;
+        return $this;
+    }
+
+
+    /**
+     * Adds the built-in AJAX middleware to the current route
+     *
+     * @return self
+     *
+     * @access public
+     */
+    public function ajax()
+    {
+        $this->middleware[] = new \Luthier\Http\Middleware\AjaxMiddleware();
         return $this;
     }
 

@@ -7,7 +7,7 @@
  */
 function luthier()
 {
-    return Luthier\App::getInstance();
+    return Luthier\Framework::getInstance();
 }
 
 
@@ -21,7 +21,7 @@ function luthier()
  */
 function route(string $name, array $args = [])
 {
-    return luthier()->router->getRouteByName($name, $args);
+    return luthier()->getContainer()->get('router')->getRouteByName($name, $args);
 }
 
 
@@ -33,5 +33,5 @@ function route(string $name, array $args = [])
  */
 function is_cli()
 {
-    return (PHP_SAPI === 'cli' OR defined('STDIN'));
+    return luthier()->request->isCli();
 }
