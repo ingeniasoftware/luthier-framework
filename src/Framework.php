@@ -9,18 +9,15 @@
 
 namespace Luthier;
 
-use Luthier\Http\{Request, Response, ResponseIterator};
+use Luthier\Http\{Request, Response};
 use Luthier\Routing\Router;
 use Symfony\Component\HttpFoundation\{Request as SfRequest, Response as SfResponse};
-use Symfony\Component\{HttpKernel, Routing};
 use Symfony\Component\Dotenv\Dotenv;
 use Symfony\Component\Dotenv\Exception\PathException;
-use Symfony\Component\Routing\Exception\ResourceNotFoundExceptio;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class Framework
 {
-    const LUTHIER_VERSION = 1.0;
+    const VERSION = '0.1.0a';
 
     /**
      * App instance object
@@ -73,36 +70,60 @@ class Framework
 
 
     /**
+     * App config array
+     *
+     * @var $config
+     *
+     * @access protected
+     */
+    protected $config = [];
+
+
+    /**
      * Class constructor
      *
+     * @param  ?string      $config  App configuration
      * @param  ?Container   $container DI container
      * @param  ?SfRequest   Symfony Request
      * @param  ?SfResponse  Symfony Response
-     * @param  string       $envFolder  Directory where is located the app .env file
      *
      * @return mixed
      *
      * @access public
      */
-    public function __construct(?Container $container = null, ?SfRequest $request = null, ?SfResponse $response = null, string $envFolder = '')
+    public function __construct($config = null, ?Container $container = null, ?SfRequest $request = null, ?SfResponse $response = null)
     {
-        $this->container = $container === NULL
-            ? new Container()
-            : $container;
-
-        $this->envFolder = $envFolder;
-        $this->request   = new Request($request);
-        $this->response  = new Response($response);
-
         // Whoops!
         (new \Whoops\Run)->pushHandler(new \Whoops\Handler\PrettyPageHandler())
             ->register();
 
-        $requiredContainers = [
+        $this->container = $container === NULL
+            ? new Container()
+            : $container;
+
+        if(is_string($config))
+        {
+            $this->envFolder = $envFolder;
+        }
+        else if(is_array($config) || $config === NULL)
+        {
+            $this->config = $config !== NULL
+                ? $config
+                : [];
+        }
+        else
+        {
+            throw new \Exception("Invalid application configuration format: must be an array or a string");
+        }
+
+        $this->request   = new Request($request);
+        $this->response  = new Response($response);
+
+        $reqContainers = [
             'router' => Router::class
         ];
 
-        foreach($requiredContainers as $name => $class)
+        foreach($reqContainers as $name => $class)
         {
             if(!$this->container->has($name))
             {
@@ -110,7 +131,7 @@ class Framework
                 {
                     throw new \Exception("Your custom container MUST have the '$name' service (instance of $class)");
                 }
-                $this->container->service('router', Router::class, true);
+                $this->container->service($name, $class, true);
             }
         }
 
@@ -131,10 +152,7 @@ class Framework
      */
     public function __call($method, $args)
     {
-        $dispatched = $this->router->getCurrentRoute() !== NULL;
-
-        // Route definition methods
-        if(in_array(strtoupper($method), Router::HTTP_VERBS) || in_array($method, ['match', 'group', 'middleware', 'cli']))
+        if(in_array(strtoupper($method), Router::HTTP_VERBS) || in_array($method, ['match', 'group', 'middleware', 'command']))
         {
             return call_user_func_array([$this->container->get('router'), $method], $args);
         }
@@ -205,21 +223,6 @@ class Framework
 
 
     /**
-     * Set app .env folder
-     *
-     * @param  string $envFolder
-     *
-     * @return string
-     *
-     * @access public
-     */
-    public function setEnvFolder(string $envFolder)
-    {
-        $this->envFolder = $envFolder;
-    }
-
-
-    /**
      * Get app DI container
      *
      * @return Container
@@ -233,35 +236,114 @@ class Framework
 
 
     /**
-     * Set app DI container
-     *
-     * @param  Container    $container
+     * Get app config array
      *
      * @return mixed
+     *
+     * @access public
+     */
+    public function getConfig()
+    {
+        return $this->config;
+    }
+
+
+    /**
+     * Set app .env folder
+     *
+     * @param  string $envFolder
+     *
+     * @return self
+     *
+     * @access public
+     */
+    public function setEnvFolder(string $envFolder)
+    {
+        $this->envFolder = $envFolder;
+        return $this;
+    }
+
+
+    /**
+     * Set app DI container
+     *
+     * @param  Container $container
+     *
+     * @return self
      *
      * @access public
      */
     public function setContainer(Container $container)
     {
         $this->container = $container;
+        return $this;
     }
 
 
     /**
-     * Load (optional) useful helpers
+     * Set the Symfony request
+     *
+     * @param  SfRequest    $request
+     *
+     * @return self
+     *
+     * @access public
+     */
+    public function setRequest(SfRequest $request)
+    {
+        $this->request = $request;
+        return $this;
+    }
+
+
+    /**
+     * Set the Symfony response
+     *
+     * @param  SfResponse   $response
+     *
+     * @return mixed
+     *
+     * @access public
+     */
+    public function setResponse(SfResponse $response)
+    {
+        $this->response = $response;
+        return $this;
+    }
+
+
+
+    /**
+     * Set app config array
+     *
+     * @param  array        $config
+     *
+     * @return mixed
+     *
+     * @access public
+     */
+    public function setConfig(array $config)
+    {
+        $this->config = $config;
+        return $this;
+    }
+
+
+    /**
+     * Load (optional) useful helper functions
      *
      * @return void
      *
      * @access public
      */
-    public function withHelperFunctions(): void
+    public function withHelpers(): void
     {
         require_once __DIR__ . '/Helpers.php';
     }
 
 
     /**
-     * Run the application and dispatches the response
+     * Configures the app and run it
      *
      * @return mixed
      *
@@ -269,109 +351,76 @@ class Framework
      */
     public function run()
     {
+        $reqConfig = [
+            'APP_ENV',
+        ];
+
+        $defConfig = [
+            'APP_ENV' => 'development',
+        ];
+
+        $config = [];
+
+        if($this->envFolder !== NULL)
+        {
+            try
+            {
+                (new Dotenv())->load( ($this->envFolder !== NULL ? $this->envFolder : '') . '.env' );
+            }
+            catch(PathException $e)
+            {
+                throw new \Exception('Unable to find your application .env file. Does the file exists?');
+            }
+            catch(\Exception $e)
+            {
+                throw new \Exception('Unable to parse your application .env file');
+            }
+
+            foreach($reqConfig as $_name)
+            {
+                if(getenv($_name) === FALSE)
+                {
+                    throw new \Exception('Error: Missing ' . $_name . ' parameter in your .env file');
+                }
+                $config[$_name] = getenv($_name);
+            }
+        }
+        else if(!empty($this->config))
+        {
+            foreach($reqConfig as $_name)
+            {
+                if(!isset($this->config[$_name]))
+                {
+                    throw new \Exception('Error: Missing ' . $_name . ' parameter in your application configuration array');
+                }
+                $config[$_name] = $this->config[$_name];
+            }
+        }
+        else
+        {
+            $config = $defConfig;
+        }
+
+        foreach($config as $name => $value)
+        {
+            $this->container->parameter($name, $value, true);
+        }
+
+        if(!in_array($config['APP_ENV'], ['development','production'], TRUE))
+        {
+            throw new \Exception('The application environment is not valid');
+        }
+
+        error_reporting( $config['APP_ENV'] == 'development' ? E_ALL : 0 );
+        ini_set('display_errors', $config['APP_ENV'] == 'development' ? 'on' : 'off' );
+
         $router = $this->container->get('router');
 
-        try
+        if(!$router instanceof Router)
         {
-            (new Dotenv())->load( ($this->envFolder !== NULL ? $this->envFolder : '') . '.env' );
-        }
-        catch(PathException $e)
-        {
-            (new SfResponse('Error: Unable to find your application .env file. Does the file exists?', 500))->send();
-            exit(-1);
-        }
-        catch(\Exception $e)
-        {
-            (new SfResponse('Error: Unable to parse your application .env file', 500))->send();
-            exit(-1);
+            throw new \Exception('Error: Invalid router. MUST be an instance of the ' . Router::class . 'class');
         }
 
-        $environment = getenv('APP_ENV');
-
-        if(!in_array($environment, ['development','production'], TRUE))
-        {
-            (new SfResponse('Error: The application configuration not valid. Check your .env file', 500))->send();
-            exit(-1);
-        }
-
-        $context = new Routing\RequestContext();
-
-        $router->setRequestContext($context);
-        $router->middleware('ajax', Http\Middleware\AjaxMiddleware::class);
-        $router->middleware('cli', Http\Middleware\CliMiddleware::class);
-
-        try
-        {
-            // Matching the current url to a route and setting up their attributes
-            $match = (
-                new Routing\Matcher\UrlMatcher(
-                    $router->compile(),
-                    $context->fromRequest($this->request->getRequest())
-                )
-            )->match($this->request->getRequest()->getPathInfo());
-
-            $this->request->getRequest()->attributes->add($match);
-
-            $controller = (new HttpKernel\Controller\ControllerResolver())
-                ->getController($this->request->getRequest());
-
-            $arguments  = (new HttpKernel\Controller\ArgumentResolver())
-                ->getArguments($this->request->getRequest(), $controller);
-
-            // Removing NULL arguments used in the callback to allow default arguments
-            // values in the route definitions
-            foreach($arguments as $i => $arg)
-            {
-                if($arg === null)
-                {
-                    unset($arguments[$i]);
-                }
-            }
-
-            $route = $match['_instance'];
-
-            // Now we assign the matched route parameters values from the url
-            $offset = 0;
-
-            foreach( explode('/', trim($this->request->getRequest()->getPathInfo(), '/')) as $i => $urlSegment )
-            {
-                $routeSegment = explode('/', $route->getFullPath())[$i];
-                if(substr($routeSegment,0,1) == '{' && substr($routeSegment,-1) == '}')
-                {
-                    $route->params[$offset]->value = $urlSegment;
-                    $offset++;
-                }
-            }
-
-            $router->setCurrentRoute($route);
-
-            // Prepare the response
-            $responseIterator = new ResponseIterator($this->request, $this->response, $route, $controller, $arguments);
-            $response = $responseIterator->dispatch();
-        }
-        catch(ResourceNotFoundException|NotFoundHttpException $e)
-        {
-            if(getenv('APP_ENV') == 'development')
-            {
-                throw $e;
-            }
-            return (new SfResponse('Not Found', 404))->send();
-        }
-        catch(\Exception $e)
-        {
-            if(getenv('APP_ENV') == 'development')
-            {
-                throw $e;
-            }
-            return (new SfResponse('An error occurred', 500))->send();
-        }
-
-        if(!$response instanceof SfResponse)
-        {
-            $response = $this->response->getResponse();
-        }
-
-        // ...finally, send the response:
-        $response->send();
+        $router->handle($this->request, $this->response);
     }
 }

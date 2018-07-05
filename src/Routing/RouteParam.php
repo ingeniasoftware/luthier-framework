@@ -89,9 +89,9 @@ final class RouteParam
      * @access private
      */
     private static $placeholderPatterns = [
-        '{num:[a-zA-Z0-9-_]*(\?}|})'      => '(:num)', # (:num) route
-        '{any:[a-zA-Z0-9-_]*(\?}|})'      => '(:any)', # (:any) route
-        '{[a-zA-Z0-9-_]*(\?}|})'          => '(:any)', # Everything else
+        '{num:[a-zA-Z0-9-_]*(\?}|})'  => '(:num)', # (:num) route
+        '{any:[a-zA-Z0-9-_]*(\?}|})'  => '(:any)', # (:any) route
+        '{[a-zA-Z0-9-_]*(\?}|})'      => '(:any)', # Everything else
     ];
 
 

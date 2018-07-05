@@ -25,13 +25,13 @@ class Container
 
 
     /**
-     * Private services
+     * Private services/parameters
      *
-     * @var $privateServices
+     * @var $privateItems
      *
      * @access protected
      */
-    protected $privateServices = [];
+    protected $privateItems = [];
 
 
     /**
@@ -74,7 +74,7 @@ class Container
     public function getPsrContainer()
     {
         $container = clone $this->container;
-        foreach($this->privateServices as $service)
+        foreach($this->privateItems as $service)
         {
             unset($container[$service]);
         }
@@ -122,7 +122,7 @@ class Container
      *
      * @param  string           $name Service name
      * @param  callable|string  $service Service callback
-     * @param  bool    $private Unset this services from the container injected to the app
+     * @param  bool             $private Mark this service as private
      *
      * @return Container
      *
@@ -131,9 +131,9 @@ class Container
     public function service(string $name, $service, bool $private = false)
     {
         $this->container[$name] = $this->getServiceCallback($service);
-        if(!in_array($name, $this->privateServices) && $private)
+        if(!in_array($name, $this->privateItems) && $private)
         {
-            $this->privateServices[] = $name;
+            $this->privateItems[] = $name;
         }
         return $this;
     }
@@ -144,16 +144,22 @@ class Container
      *
      * @param  string  $name Parameter name
      * @param  mixed   $value Parameter value
+     * @param  bool    $private Mark this parameter as private
      *
      * @return Container
      *
      * @access public
      */
-    public function parameter(string $name, $value)
+    public function parameter(string $name, $value, bool $private = false)
     {
         $this->container[$name] = is_callable($value)
             ? $this->container->protect($value)
             : $value;
+
+        if(!in_array($name, $this->privateItems) && $private)
+        {
+            $this->privateItems[] = $name;
+        }
 
         return $this;
     }
@@ -164,7 +170,7 @@ class Container
      *
      * @param  string    $name Factory name
      * @param  callable  $service Factory callback
-     * @param  bool    $private Unset this services from the container injected to the app
+     * @param  bool      $private Mark this factory as private
      *
      * @return Container
      *
@@ -173,9 +179,9 @@ class Container
     public function factory(string $name, callable $service, bool $private = false)
     {
         $this->container[$name] = $this->container->factory($this->getServiceCallback($service));
-        if(!in_array($name, $this->privateServices) && $private)
+        if(!in_array($name, $this->privateItems) && $private)
         {
-            $this->privateServices[] = $name;
+            $this->privateItems[] = $name;
         }
         return $this;
     }

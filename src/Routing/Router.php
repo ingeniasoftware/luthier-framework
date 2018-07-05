@@ -9,14 +9,19 @@
 
 namespace Luthier\Routing;
 
-use Luthier\Routing\Route as LuthierRoute;
-use Luthier\Http\Middleware\MiddlewareInterface;
-use Symfony\Component\Routing\RequestContext;
-use Symfony\Component\Routing\Generator\UrlGenerator;
-use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
-use Symfony\Component\Routing\Route;
-use Symfony\Component\Routing\RouteCollection;
-use Symfony\Component\HttpFoundation\Request;
+use Luthier\Http\{Request, Response, ResponseIterator};
+use Luthier\Routing\{Route as LuthierRoute, Command as LuthierCommand};
+use Luthier\Http\Middleware\{AjaxMiddleware,MiddlewareInterface};
+use Symfony\Component\Routing\Generator\{UrlGenerator, UrlGeneratorInterface};
+use Symfony\Component\Routing\{Route, RouteCollection, RequestContext};
+use Symfony\Component\HttpKernel;
+use Symfony\Component\HttpFoundation\{Request as SfRequest, Response as SfResponse};
+use Symfony\Component\Console\Application;
+use Symfony\Component\Console\CommandLoader\FactoryCommandLoader;
+use Symfony\Component\Dotenv\Dotenv;
+use Symfony\Component\Routing;
+use Symfony\Component\Routing\Exception\ResourceNotFoundException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class Router
 {
@@ -48,7 +53,17 @@ class Router
 
 
     /**
-     * Routes (Luthier Route instances)
+     * Commands (Luthier Command objects)
+     *
+     * @var $commands
+     *
+     * @access protected
+     */
+    protected $commands = [];
+
+
+    /**
+     * Routes (Luthier Route objects)
      *
      * @var $routes
      *
@@ -130,31 +145,42 @@ class Router
      *
      * @access public
      */
-
     public function __call($callback, array $attributes)
     {
-        if($callback == 'match')
+        if($callback == 'command')
         {
-            $methods = $attributes[0];
-        }
-        else
-        {
-            $methods = $callback;
-        }
+            [$name, $_callback] = $attributes;
 
-        if($callback == 'cli')
-        {
-            $route = (new LuthierRoute(['GET'], $attributes))
-                ->middleware(new \Luthier\Http\Middleware\CliMiddleware());
+            $command = new LuthierCommand($name, $_callback);
+
+            if(isset($this->commands[$command->getName()]))
+            {
+                echo 'ERROR: Duplicated ' . $command->getName() . ' command!' . PHP_EOL;
+                exit(-1);
+            }
+
+            $this->commands[$command->getName()] = function() use($command){
+                return $command->compile();
+            };
+
+            return $command;
         }
         else
         {
+            if($callback == 'match')
+            {
+                $methods = $attributes[0];
+            }
+            else
+            {
+                $methods = $callback;
+            }
+
             $route = new LuthierRoute($methods, $attributes);
+            $this->routes[] = $route;
+            return $route;
         }
 
-        $this->routes[] = $route;
-
-        return $route;
     }
 
 
@@ -167,7 +193,7 @@ class Router
      *
      * @access public
      */
-    public function compile()
+    public function compileRoutes()
     {
         foreach($this->routes as $i => $_route)
         {
@@ -482,4 +508,148 @@ class Router
     {
         $this->requestContext = $requestContext;
     }
+
+
+    /**
+     * Handle request
+     *
+     * @param  Request   $request
+     * @param  Response  $response
+     *
+     * @return mixed
+     *
+     * @access public
+     */
+    public function handle(Request $request, Response $response)
+    {
+        if(!$request->isCli())
+        {
+            $this->http($request, $response);
+        }
+        else
+        {
+            $this->cli($request);
+        }
+    }
+
+
+    /**
+     * Handle an http request
+     *
+     * @param  Request      $request
+     * @param  Response     $response
+     *
+     * @return mixed
+     *
+     * @access private
+     */
+    private function http(Request $request, Response $response)
+    {
+        if(empty($this->routes))
+        {
+            ob_start();
+            require __DIR__ . '/../Resources/About.php';
+            $content = ob_get_clean();
+            $response->getResponse()->setContent($content)->send();
+            exit(1);
+        }
+
+        $context = new Routing\RequestContext();
+
+        $this->setRequestContext($context);
+        $this->middleware('ajax', AjaxMiddleware::class);
+
+        try
+        {
+            // Matching the current url to a route and setting up their attributes
+            $match = (
+                new Routing\Matcher\UrlMatcher(
+                    $this->compileRoutes(),
+                    $context->fromRequest($request->getRequest())
+                )
+            )->match($request->getRequest()->getPathInfo());
+
+            $request->getRequest()->attributes->add($match);
+
+            $controller = (new HttpKernel\Controller\ControllerResolver())
+                ->getController($request->getRequest());
+
+            $arguments = (new HttpKernel\Controller\ArgumentResolver())
+                ->getArguments($request->getRequest(), $controller);
+
+            // Removing NULL arguments used in the callback to allow default arguments
+            // values in the route definitions
+            foreach($arguments as $i => $arg)
+            {
+                if($arg === null)
+                {
+                    unset($arguments[$i]);
+                }
+            }
+
+            $route = $match['_instance'];
+
+            // Now we assign the matched route parameters values from the url
+            $offset = 0;
+
+            foreach( explode('/', trim($request->getRequest()->getPathInfo(), '/')) as $i => $urlSegment )
+            {
+                $routeSegment = explode('/', $route->getFullPath())[$i];
+                if(substr($routeSegment,0,1) == '{' && substr($routeSegment,-1) == '}')
+                {
+                    $route->params[$offset]->value = $urlSegment;
+                    $offset++;
+                }
+            }
+
+            $this->setCurrentRoute($route);
+
+            $responseIterator = new ResponseIterator($request, $response, $route, $controller, $arguments);
+            $responseResult = $responseIterator->dispatch();
+        }
+        catch(ResourceNotFoundException|NotFoundHttpException $e)
+        {
+            if(getenv('APP_ENV') == 'development')
+            {
+                throw $e;
+            }
+            return (new SfResponse('Not Found', 404))->send();
+        }
+        catch(\Exception $e)
+        {
+            if(getenv('APP_ENV') == 'development')
+            {
+                throw $e;
+            }
+            return (new SfResponse('An error occurred', 500))->send();
+        }
+
+        if(!$responseResult instanceof SfResponse)
+        {
+            $responseResult = $response->getResponse();
+        }
+
+        // ...finally, send the response:
+        $responseResult->send();
+    }
+
+
+
+    /**
+     * Handle a CLI request
+     *
+     * @param  Request  $request
+     *
+     * @return mixed
+     *
+     * @access private
+     */
+    private function cli(Request $request)
+    {
+        $cli = new FactoryCommandLoader($this->commands);
+        $app = new Application();
+        $app->setCommandLoader($cli);
+        $app->run();
+    }
+
 }
