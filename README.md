@@ -4,7 +4,7 @@
 
 <p align="center"><strong>WARNING: Under development!</strong></p>
 
-**Luthier Framework** is a versatile PHP micro framework designed to make APIs and websites quickly. When we says "micro" we mean REALLY micro: in fact, only Composer and a single .php file is needed for start building your app. 
+**Luthier Framework** is a versatile PHP micro framework for build APIs and websites quickly. When we says "micro" we mean REALLY micro: in fact, only Composer and a single .php file is required to start. 
 
 ### Features
 
