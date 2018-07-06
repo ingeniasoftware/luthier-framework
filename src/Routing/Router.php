@@ -180,10 +180,12 @@ class Router
             $this->routes[] = $route;
             return $route;
         }
+        else
+        {
+            throw new \BadMethodCallException("Call to undefined method Luthier\Router::{$method}() ");
+        }
 
     }
-
-
 
 
     /**

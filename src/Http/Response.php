@@ -59,7 +59,7 @@ class Response
         }
         else
         {
-           throw new \BadMethodCallException ("Undefined method Response::{$property}()");
+           throw new \BadMethodCallException ("Call to undefined method Response::{$property}()");
         }
     }
 

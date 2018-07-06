@@ -157,7 +157,7 @@ class Framework
             return call_user_func_array([$this->container->get('router'), $method], $args);
         }
 
-        throw new \BadMethodCallException("Undefined method Luthier\Framework::{$method}() ");
+        throw new \BadMethodCallException("Call to undefined method Luthier\Framework::{$method}() ");
     }
 
 

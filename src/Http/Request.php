@@ -82,7 +82,7 @@ class Request
         }
         else
         {
-            throw new \BadMethodCallException ("Undefined method Request::{$property}()");
+            throw new \BadMethodCallException ("Call to undefined method Request::{$property}()");
         }
     }
 

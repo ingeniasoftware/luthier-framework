@@ -43,7 +43,7 @@ class Application
         }
         else
         {
-            throw new \Exception("Undefined property Application::$property");
+            throw new \Exception("Trying to get undefined property Application::$property");
         }
     }
 }
