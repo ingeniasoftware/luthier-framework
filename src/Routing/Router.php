@@ -9,9 +9,11 @@
 
 namespace Luthier\Routing;
 
+use Luthier\Framework;
 use Luthier\Http\{Request, Response, ResponseIterator};
-use Luthier\Routing\{Route as LuthierRoute, Command as LuthierCommand};
 use Luthier\Http\Middleware\{AjaxMiddleware,MiddlewareInterface};
+use Luthier\Events\{RequestEvent, PreRoutingEvent, PreRouteCallbackEvent, ResponseEvent};
+use Luthier\Routing\{Route as LuthierRoute, Command as LuthierCommand};
 use Symfony\Component\Routing\Generator\{UrlGenerator, UrlGeneratorInterface};
 use Symfony\Component\Routing\{Route, RouteCollection, RequestContext};
 use Symfony\Component\HttpKernel;
@@ -165,7 +167,7 @@ class Router
 
             return $command;
         }
-        else
+        else if(in_array(strtoupper($callback), self::HTTP_VERBS) || in_array($method, ['match']))
         {
             if($callback == 'match')
             {
@@ -273,8 +275,6 @@ class Router
         {
             self::$context['host'] = $attributes['host'];
         }
-
-        //call_user_func_array($routes, [$this]);
 
         $routes = \Closure::bind($routes, $this, Router::class);
         $routes();
@@ -482,6 +482,7 @@ class Router
         };
     }
 
+
     /**
      * Set the current route
      *
@@ -526,11 +527,11 @@ class Router
     {
         if(!$request->isCli())
         {
-            $this->http($request, $response);
+            $this->handleHttp($request, $response);
         }
         else
         {
-            $this->cli($request);
+            $this->handleCli($request);
         }
     }
 
@@ -545,8 +546,12 @@ class Router
      *
      * @access private
      */
-    private function http(Request $request, Response $response)
+    private function handleHttp(Request $request, Response $response)
     {
+        $dispatcher = Framework::getInstance()->dispatcher;
+        $dispatcher->dispatch('request', new RequestEvent($request, $response));
+
+        // No routes defined? Show an about screen
         if(empty($this->routes))
         {
             ob_start();
@@ -557,9 +562,10 @@ class Router
         }
 
         $context = new Routing\RequestContext();
-
         $this->setRequestContext($context);
         $this->middleware('ajax', AjaxMiddleware::class);
+
+        $dispatcher->dispatch('pre_routing', new PreRoutingEvent($request, $response, $this));
 
         try
         {
@@ -589,9 +595,7 @@ class Router
                 }
             }
 
-            $route = $match['_instance'];
-
-            // Now we assign the matched route parameters values from the url
+            $route  = $match['_instance'];
             $offset = 0;
 
             foreach( explode('/', trim($request->getRequest()->getPathInfo(), '/')) as $i => $urlSegment )
@@ -606,6 +610,7 @@ class Router
 
             $this->setCurrentRoute($route);
 
+            $dispatcher->dispatch('pre_route_callback', new PreRouteCallbackEvent($request, $response, $route, $controller, $arguments));
             $responseIterator = new ResponseIterator($request, $response, $route, $controller, $arguments);
             $responseResult = $responseIterator->dispatch();
         }
@@ -631,6 +636,8 @@ class Router
             $responseResult = $response->getResponse();
         }
 
+        $dispatcher->dispatch('response', new ResponseEvent($request, $response));
+
         // ...finally, send the response:
         $responseResult->send();
     }
@@ -646,7 +653,7 @@ class Router
      *
      * @access private
      */
-    private function cli(Request $request)
+    private function handleCli(Request $request)
     {
         $cli = new FactoryCommandLoader($this->commands);
         $app = new Application();

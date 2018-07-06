@@ -11,6 +11,7 @@ namespace Luthier;
 
 use Luthier\Http\{Request, Response};
 use Luthier\Routing\Router;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\HttpFoundation\{Request as SfRequest, Response as SfResponse};
 use Symfony\Component\Dotenv\Dotenv;
 use Symfony\Component\Dotenv\Exception\PathException;
@@ -79,6 +80,7 @@ class Framework
     protected $config = [];
 
 
+
     /**
      * Class constructor
      *
@@ -93,7 +95,7 @@ class Framework
      */
     public function __construct($config = null, ?Container $container = null, ?SfRequest $request = null, ?SfResponse $response = null)
     {
-        // Whoops!
+        // Registering Whoops!
         (new \Whoops\Run)->pushHandler(new \Whoops\Handler\PrettyPageHandler())
             ->register();
 
@@ -116,11 +118,12 @@ class Framework
             throw new \Exception("Invalid application configuration format: must be an array or a string");
         }
 
-        $this->request   = new Request($request);
-        $this->response  = new Response($response);
+        $this->request  = new Request($request);
+        $this->response = new Response($response);
 
         $reqContainers = [
-            'router' => Router::class
+            'router'     => Router::class,
+            'dispatcher' => EventDispatcher::class
         ];
 
         foreach($reqContainers as $name => $class)

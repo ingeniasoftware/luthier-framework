@@ -50,7 +50,7 @@ class Container
     /**
      * __get() magic method
      *
-     * @param  mixed  $service The service name to be fetched
+     * @param  mixed  $service The service/parameter/factory name to be fetched
      *
      * @return mixed
      *
@@ -78,6 +78,7 @@ class Container
         {
             unset($container[$service]);
         }
+
         return new PimplePsrContainer($container);
     }
 
@@ -135,6 +136,7 @@ class Container
         {
             $this->privateItems[] = $name;
         }
+
         return $this;
     }
 
@@ -183,6 +185,7 @@ class Container
         {
             $this->privateItems[] = $name;
         }
+
         return $this;
     }
 
