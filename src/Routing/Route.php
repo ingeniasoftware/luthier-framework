@@ -1,163 +1,110 @@
 <?php
 
-/**
- * Route class
+/*
+ * Luthier Framework
  *
- * @autor Anderson Salas <anderson@ingenia.me>
- * @licence MIT
+ * (c) 2018 Ingenia Software C.A
+ *
+ * This file is part of the Luthier Framework. See the LICENSE file for copyright
+ * information and license details
  */
 
 namespace Luthier\Routing;
 
 use Symfony\Component\Routing\Route as SfRoute;
 
+/**
+ * Route representation. All routes are compiled to Symfony routes when the application runs, 
+ * calling the compile() method on each of them.
+ * 
+ * @author Anderson Salas <anderson@ingenia.me>
+ */
 class Route
 {
     /**
-     * Route relative path
-     *
-     * @var $path
-     *
-     * @access private
-     */
+     * Relative path
+     * 
+     * @var string
+     */   
     private $path;
-
-
+    
     /**
-     * Route absolute (full) path
+     * Full (absolute) path
      *
-     * @var $fullPath
-     *
-     * @access private
+     * @var string
      */
     private $fullPath;
 
-
     /**
-     * Route name
-     *
-     * @var $name
-     *
-     * @access private
+     * @var string
      */
     private $name;
 
-
     /**
-     * Route accepted HTTP Verbs
+     * Accepted HTTP Verbs
      *
-     * @var $methods
-     *
+     * @var string[]
+     * 
      * @access private
      */
     private $methods = [];
-
-
+    
     /**
-     * Route callback/controller
-     *
-     * @var $action
-     *
-     * @access private
+     * @var string|callable
      */
     private $action;
 
-
     /**
-     * Array of route assigned middleware
-     *
-     * @var $middleware
-     *
-     * @access private
+     * @var array
      */
     private $middleware = [];
 
-
     /**
-     * Route namespace
-     *
-     * @var $namespace
-     *
-     * @access private
+     * @var string
      */
     private $namespace = '';
 
-
     /**
-     * Route prefix
-     *
-     * @var $prefix
-     *
-     * @access private
+     * @var string
      */
     private $prefix = '';
 
-
     /**
-     * Route host
-     *
-     * @var $host
-     *
-     * @access private
+     * @var string
      */
     private $host = '';
 
-
     /**
-     * Array of accepted HTTP schemes
-     *
-     * @var $schemes
-     *
-     * @access private
+     * @var string[]
      */
     private $schemes = [];
 
-
     /**
-     * Array of route parameters
-     *
-     * @var $params
-     *
-     * @access public
+     * @var RouteParam[] Array of route parameters
      */
     public $params = [];
 
-
     /**
-     * Segment index when start the parameters (if any)
-     *
-     * @var $paramOffset
-     *
-     * @access public
+     * @var int
      */
     public $paramOffset;
 
-
     /**
-     * Has the route any optional parameter?
-     *
-     * @var $hasOptionalParams
-     *
-     * @access public
+     * @var bool
      */
     public $hasOptionalParams = false;
 
-
-    /**
-     * Class constructor
-     *
-     * @param  string|array  $methods Accepted route methods
-     * @param  array         $route Route attributes
-     *
-     * @return mixed
-     *
-     * @access public
+    /** 
+     * @param array|string  $methods  Route methods
+     * @param array         $route    Route arguments
+     * 
+     * @throws \Exception
      */
     public function __construct($methods, array $route)
     {
         if($methods == 'any')
         {
-            $methods = Router::HTTP_VERBS;
+            $methods = RouteBuilder::HTTP_VERBS;
         }
         elseif(is_string($methods))
         {
@@ -188,9 +135,9 @@ class Route
             ? $route[2]
             : NULL;
 
-        if(!empty(Router::getContext('prefix')))
+        if(!empty(RouteBuilder::getContext('prefix')))
         {
-            $prefixes = Router::getContext('prefix');
+            $prefixes = RouteBuilder::getContext('prefix');
             foreach($prefixes as $prefix)
             {
                 $this->prefix .= trim($prefix,'/') != ''
@@ -200,9 +147,9 @@ class Route
             $this->prefix = trim($this->prefix,'/');
         }
 
-        if(!empty(Router::getContext('namespace')))
+        if(!empty(RouteBuilder::getContext('namespace')))
         {
-            $namespaces = Router::getContext('namespace');
+            $namespaces = RouteBuilder::getContext('namespace');
             foreach($namespaces as $namespace)
             {
                 $this->namespace .= trim($namespace, '/') != ''
@@ -212,27 +159,27 @@ class Route
             $this->namespace = trim($this->namespace,'/');
         }
 
-        if(!empty(Router::getContext('middleware')['route']))
+        if(!empty(RouteBuilder::getContext('middleware')['route']))
         {
-            $middlewares = Router::getContext('middleware')['route'];
-            foreach($middlewares as $middleware)
+            $middleware = RouteBuilder::getContext('middleware')['route'][0];
+            foreach($middleware as $_middleware)
             {
-                if(!in_array($middleware, $this->middleware))
+                if(!in_array($_middleware, $this->middleware))
                 {
-                    $this->middleware[] = $middleware;
+                    $this->middleware[] = $_middleware;
                 }
             }
         }
 
-        if(!empty(Router::getContext('host')))
+        if(!empty(RouteBuilder::getContext('host')))
         {
-            $host = Router::getContext('host')[0];
+            $host = RouteBuilder::getContext('host')[0];
             $this->host = $host;
         }
 
-        if(!empty(Router::getContext('schemes')))
+        if(!empty(RouteBuilder::getContext('schemes')))
         {
-            $schemes = Router::getContext('schemes');
+            $schemes = RouteBuilder::getContext('schemes');
             if(!empty($schemes))
             {
                 $this->schemes = $schemes[0];
@@ -312,23 +259,31 @@ class Route
         $this->fullPath = implode('/', $this->fullPath);
     }
 
-
     /**
-     * Compile the current route into a Symfony Routing Component route
-     *
-     * @return mixed
-     *
-     * @access public
+     * Compiles the route to a Symfony route
+     * 
+     * @return array ([string $name, \Symfony\Component\Routing\Route $route])
      */
     public function compile()
     {
         $name = $this->name;
         $path = $this->fullPath;
 
+        if(is_callable($this->action))
+        {
+            $controller = $this->action;
+        }
+        else
+        {
+            $controller = (!empty($this->namespace) ? $this->namespace . '\\' : '')
+                . implode('::', explode('@', $this->action));
+        }
+
         $defaults = [
-            '_controller' => $this->action,
-            '_instance'   => $this,
+            '_controller' => $controller,
+            '_orig_route' => $this,
         ];
+        
         $requirements = [];
 
         foreach($this->params as $param)
@@ -344,16 +299,13 @@ class Route
         return [$this->name,  new SfRoute($path, $defaults, $requirements, $options, $host, $schemes, $methods)];
     }
 
-
     /**
-     * Get or set a route parameter (if exists)
-     *
-     * @param  string  $name Parameter name
-     * @param  mixed   $value (Optional)
-     *
-     * @return mixed
-     *
-     * @access public
+     * Gets (or sets) a route parameter
+     * 
+     * @param  string  $name  Parameter name
+     * @param  mixed   $value Parameter value
+     * 
+     * @return mixed|void  
      */
     public function param(string $name, $value = null)
     {
@@ -370,15 +322,12 @@ class Route
         }
     }
 
-
     /**
-     * Set the route name (method chaining)
-     *
-     * @param  string  $name
-     *
+     * Sets the route name
+     * 
+     * @param string $name Route name
+     * 
      * @return self
-     *
-     * @access public
      */
     public function name(string $name)
     {
@@ -386,8 +335,16 @@ class Route
         return $this;
     }
 
+    /**
+     * Adds a middleware to route
+     * 
+     * @param mixed $middleware Route middleware
+     * 
+     * @return self
+     */
     public function middleware($middleware)
     {
+
         if(is_array($middleware))
         {
             $this->middleware = array_merge($this->middleware, $middleware);
@@ -398,16 +355,13 @@ class Route
         }
         return $this;
     }
-
-
+    
     /**
-     * Set the route host (method chaining)
-     *
-     * @param  string  $host
-     *
+     * Sets the route host
+     * 
+     * @param string $host Route host
+     * 
      * @return self
-     *
-     * @access public
      */
     public function host(string $host)
     {
@@ -416,13 +370,11 @@ class Route
     }
 
     /**
-     * Set the route accepted HTTP schemes (method chaining)
+     * Sets the route accepted HTTP schemes
      *
      * @param  array  $schemes
      *
      * @return self
-     *
-     * @access public
      */
     public function schemes(array $schemes)
     {
@@ -430,29 +382,23 @@ class Route
         return $this;
     }
 
-
     /**
      * Adds the built-in AJAX middleware to the current route
      *
      * @return self
-     *
-     * @access public
      */
     public function ajax()
     {
         $this->middleware[] = new \Luthier\Http\Middleware\AjaxMiddleware();
         return $this;
     }
-
-
+    
     /**
-     * Check if the route has a specific parameter
+     * Checks if the route has a specific parameter
      *
-     * @param  string  $name
+     * @param  string  $name Parameter name
      *
      * @return bool
-     *
-     * @access public
      */
     public function hasParam(string $name)
     {
@@ -466,9 +412,8 @@ class Route
         return false;
     }
 
-
     /**
-     * Get the route name
+     * Gets the route name
      *
      * @return string
      *
@@ -479,145 +424,113 @@ class Route
         return $this->name;
     }
 
-
     /**
-     * Set route name [alias of Route::name()]
+     * Sets route name [alias of Route::name()]
      *
-     * @param  string  $name
+     * @param  string  $name Route name
      *
      * @return self
-     *
-     * @access public
      */
     public function setName(string $name)
     {
         return $this->name($name);
     }
 
-
     /**
-     * Get route path
+     * Gets route path
      *
      * @return string
-     *
-     * @access public
      */
     public function getPath()
     {
         return $this->path;
     }
 
-
     /**
-     * Get route absolute (full) path
+     * Get route full (absolute) path
      *
      * @return string
-     *
-     * @access public
      */
     public function getFullPath()
     {
         return $this->fullPath;
     }
 
-
     /**
-     * Get route prefix
+     * Gets route prefix
      *
      * @return string
-     *
-     * @access public
      */
     public function getPrefix()
     {
         return $this->prefix;
     }
 
-
     /**
-     * Get route action
+     * Gets route action
      *
-     * @return mixed
+     * @return string|callable
      *
-     * @access public
      */
     public function getAction()
     {
         return $this->action;
     }
 
-
     /**
-     * Get route middleware
+     * Gets route middleware
      *
      * @return array
-     *
-     * @access public
      */
     public function getMiddleware()
     {
         return $this->middleware;
     }
 
-
     /**
-     * Get route namespace
+     * Gets route namespace
      *
-     * @return mixed
-     *
-     * @access public
+     * @return string
      */
     public function getNamespace()
     {
         return $this->namespace;
     }
 
-
     /**
-     * Get route accepted HTTP verbs
+     * Gets route accepted HTTP verbs
      *
      * @return array
-     *
-     * @access public
      */
     public function getMethods()
     {
         return $this->methods;
     }
 
-
     /**
-     * Get route host
+     * Gets route host
      *
      * @return string
-     *
-     * @access public
      */
     public function getHost()
     {
         return $this->host;
     }
 
-
     /**
-     * Get route accepted HTTP schemes
+     * Gets route accepted HTTP schemes
      *
      * @return array
-     *
-     * @access public
      */
     public function getSchemes()
     {
         return $this->schemes;
     }
 
-
     /**
-     * Return all route sticky parameters
+     * Gets all route sticky parameters
      *
      * @return array
-     *
-     * @access public
      */
     public function getStickyParams()
     {
@@ -634,15 +547,12 @@ class Route
         return $sticky;
     }
 
-
     /**
-     * Set route path (method chaining)
+     * Sets the route path
      *
-     * @param  string  $path
+     * @param  string  $path Route path
      *
      * @return self
-     *
-     * @access public
      */
     public function setPath(string $path)
     {
@@ -650,15 +560,12 @@ class Route
         return $this;
     }
 
-
     /**
-     * Set route action (method chaining)
+     * Sets the route action
      *
-     * @param  string  $action
+     * @param  string|callable  $action Route action
      *
      * @return self
-     *
-     * @access public
      */
     public function setAction($action)
     {
@@ -666,30 +573,24 @@ class Route
         return $this;
     }
 
-
     /**
-     * Set route host (method chaining)
+     * Sets the route host
      *
      * @param  string  $host
      *
      * @return self
-     *
-     * @access public
      */
     public function setHost(string $host)
     {
         return $this->host($host);
     }
 
-
     /**
-     * Set route accepted HTTP schemes (method chaining)
+     * Sets the route accepted HTTP schemes (method chaining)
      *
-     * @param  array  $schemes
+     * @param  array  $schemes Accepted HTTP schemes
      *
      * @return self
-     *
-     * @access public
      */
     public function setSchemes(array $schemes)
     {

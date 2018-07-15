@@ -1,195 +1,262 @@
 <?php
 
-/**
- * Container class
+/*
+ * Luthier Framework
  *
- * @autor Anderson Salas <anderson@ingenia.me>
- * @licence MIT
+ * (c) 2018 Ingenia Software C.A
+ *
+ * This file is part of the Luthier Framework. See the LICENSE file for copyright
+ * information and license details
  */
 
 namespace Luthier;
 
 use Pimple\Container as PimpleContainer;
 use Pimple\Psr11\Container as PimplePsrContainer;
+use Pimple\Psr11\ServiceLocator;
 
+/**
+ * Facade of Pimple dependency injection container used by Luthier Framework
+ *
+ * This class contains methods for adding elements (services, properties and factories) to
+ * the container:
+ *
+ *   * service()
+ *   * parameter()
+ *   * factory()
+ *
+ * The get() and has() methods retrieves and checks for the existence of
+ * a element inside the container.
+ *
+ * All elements can be marked as private, excluding them of the PSR-11 container which is
+ * passed to the application controllers / route closure controllers
+ *
+ * Also, if you name a element of the container starting with a dot (.) it will be marked
+ * as private.
+ *
+ * @author Anderson Salas <anderson@ingenia.me>
+ */
 class Container
 {
     /**
-     * Pimple instance
-     *
-     * @var $container
-     *
-     * @access protected
+     * @var \Pimple\Container
      */
     protected $container;
-
-
+    
     /**
-     * Private services/parameters
-     *
-     * @var $privateItems
-     *
-     * @access protected
+     * @var array
+     */
+    protected $parameters = [];
+    
+    /**
+     * @var array
+     */
+    protected $services = [];
+    
+    /**
+     * @var array
      */
     protected $privateItems = [];
-
-
+    
     /**
-     * Class constructor
+     * The default container
      *
-     * @return mixed
-     *
-     * @access public
+     * @var array
      */
+    protected static $defaultContainer = [
+        'router'          => [\Luthier\Routing\RouteBuilder::class, true],
+        'request_handler' => [\Luthier\Http\RequestHandler::class, true],
+        'dispatcher'      => [\Symfony\Component\EventDispatcher\EventDispatcher::class, true],
+    ];
+    
     public function __construct()
     {
         $this->container = new PimpleContainer();
     }
-
-
+    
     /**
      * __get() magic method
      *
-     * @param  mixed  $service The service/parameter/factory name to be fetched
+     * @param string $service  The service/parameter/factory name to be fetched
      *
      * @return mixed
-     *
-     * @access public
      */
     public function __get($service)
     {
         return $this->get($service);
     }
-
-
+    
     /**
-     * Get a Psr11 Pimple container
+     * Gets a PSR-11 Pimple container instance
      *
-     * This method also unset any service/parameter marked as private
+     * This methods excludes ALL private services/parameters/factories before creating
+     * the PSR-11 container instance
      *
-     * @return PimplePsrContainer
-     *
-     * @access public
+     * @return \Pimple\Psr11\Container
      */
     public function getPsrContainer()
     {
         $container = clone $this->container;
+        
         foreach($this->privateItems as $service)
         {
             unset($container[$service]);
         }
-
+        
         return new PimplePsrContainer($container);
     }
-
-
+    
     /**
-     * Get a valid callback from a service name
-     *
-     * @param  string|callback $service
-     *
-     * @return callable
-     *
-     * @access private
+     * Gets a service callback from a string
+     * 
+     * @param string $name The service class name
+     * 
+     * @throws \InvalidArgumentException
      */
-    private function getServiceCallback($service)
+    private function getServiceCallback(string $service)
     {
-        if(is_string($service))
+        if(!class_exists($service))
         {
-            if(!class_exists($service))
-            {
-                throw new \InvalidArgumentException("Unable to register a new service: the class $service does not exists");
-            }
-
-            $container = $this->container;
-            return function($container) use($service)
-            {
-                return new $service();
-            };
+            throw new \InvalidArgumentException("Unable to register a new service: the class $service does not exists");
         }
-        else if(is_callable($service))
+        
+        $container = $this->container;
+        
+        return function($container) use($service)
         {
-            return $service;
-        }
-        else
-        {
-            throw new \InvalidArgumentException("Unable to register a new service: the service callback must be a valid callback or a fully-qualified class name");
-        }
+            $defaultAliases = array_merge(
+                array_keys(Configuration::getDefaultConfig()), array_keys(self::getDefaultContainer())
+            );
+            $userAliases = array_merge($this->services, $this->parameters);
+            
+            return new $service(
+                new ServiceLocator(
+                    $container,
+                    array_unique(array_merge($defaultAliases,$userAliases))
+                    )
+                );
+        };
     }
-
-
+    
     /**
-     * Register a new service
+     * Returns the default Luthier Framework container
      *
-     * @param  string           $name Service name
-     * @param  callable|string  $service Service callback
-     * @param  bool             $private Mark this service as private
+     * This is used during the framework initialization if a custom container is provided
+     * in order to check that they have all the required services into it.
      *
-     * @return Container
+     * @return array
+     */
+    public static function getDefaultContainer()
+    {
+        return self::$defaultContainer;
+    }
+    
+    /**
+     * Registers a new service in the container
      *
-     * @access public
+     * @param  string           $name     Service name
+     * @param  callable|string  $service  Service callback
+     * @param  bool             $private  Mark the service as private
+     *
+     * @return self
      */
     public function service(string $name, $service, bool $private = false)
     {
-        $this->container[$name] = $this->getServiceCallback($service);
+        if(substr($name,0,1) == '.')
+        {
+            $name    = substr($name,1);
+            $private = true;
+        }
+       
+        $this->container[$name] = is_string($service) 
+            ? $this->getServiceCallback($service)
+            : $service;
+        
         if(!in_array($name, $this->privateItems) && $private)
         {
             $this->privateItems[] = $name;
         }
-
+        
+        if(!in_array($name, $this->services))
+        {
+            $this->services[] = $name;
+        }
+        
         return $this;
     }
-
-
+    
     /**
-     * Register a new parameter
+     * Registers a new parameter in the container
      *
-     * @param  string  $name Parameter name
-     * @param  mixed   $value Parameter value
-     * @param  bool    $private Mark this parameter as private
+     * All parameter names will be converted to UPPERCASE
      *
-     * @return Container
+     * @param  string  $name     Parameter name
+     * @param  mixed   $value    Parameter value
+     * @param  bool    $private  Mark the parameter as private
      *
-     * @access public
+     * @return self
      */
     public function parameter(string $name, $value, bool $private = false)
     {
+        if(substr($name,0,1) == '.')
+        {
+            $name    = substr($name,1);
+            $private = true;
+        }
+        
+        $name = strtoupper($name);
+        
         $this->container[$name] = is_callable($value)
-            ? $this->container->protect($value)
-            : $value;
-
+        ? $this->container->protect($value)
+        : $value;
+        
         if(!in_array($name, $this->privateItems) && $private)
         {
             $this->privateItems[] = $name;
         }
-
+        
+        if(!in_array($name, $this->parameters))
+        {
+            $this->parameters[] = $name;
+        }
+        
         return $this;
     }
-
-
+    
     /**
-     * Register a new factory
+     * Registers a new factory in the container
      *
-     * @param  string    $name Factory name
-     * @param  callable  $service Factory callback
-     * @param  bool      $private Mark this factory as private
+     * @param  string           $name     Factory name
+     * @param  string|callable  $factory  Factory callback
+     * @param  bool             $private  Mark the factory as private
      *
-     * @return Container
-     *
-     * @access public
+     * @return self
      */
-    public function factory(string $name, callable $service, bool $private = false)
+    public function factory(string $name, $factory, bool $private = false)
     {
-        $this->container[$name] = $this->container->factory($this->getServiceCallback($service));
+        if(substr($name,0,1) == '.')
+        {
+            $name    = substr($name,1);
+            $private = true;
+        }
+        
+        $this->container[$name] = is_string($factory)
+            ? $this->getServiceCallback($factory)
+            : $service;
+        
         if(!in_array($name, $this->privateItems) && $private)
         {
             $this->privateItems[] = $name;
         }
-
+        
+        if(!in_array($name, $this->services))
+        {
+            $this->services[] = $name;
+        }
+        
         return $this;
     }
-
-
+    
     /**
      * Get a service/parameter from the container
      *
@@ -201,21 +268,22 @@ class Container
      */
     public function get(string $name)
     {
-        if(!$this->has($name))
+        if($this->has($name))
+        {
+            return $this->container[$name];
+        }
+        else 
         {
             throw new \Exception("The '$name' service/parameter is not defined in the container");
-        }
-
-        return $this->container[$name];
+        }    
     }
-
-
+    
     /**
      * Check if the container has a specific service/parameter
      *
      * @param  string $name
      *
-     * @return mixed
+     * @return bool
      *
      * @access public
      */

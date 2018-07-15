@@ -1,92 +1,66 @@
 <?php
 
-/**
- * RouteParam class
+/*
+ * Luthier Framework
  *
- * @autor Anderson Salas <anderson@ingenia.me>
- * @licence MIT
+ * (c) 2018 Ingenia Software C.A
+ *
+ * This file is part of the Luthier Framework. See the LICENSE file for copyright
+ * information and license details
  */
 
 namespace Luthier\Routing;
 
+/**
+ * Route parameter representation
+ * 
+ * @author Anderson Salas <anderson@ingenia.me>
+ */
 final class RouteParam
 {
     /**
-     * Param name
-     *
-     * @var $name
-     *
-     * @access private
+     * @var string
      */
     private $name;
 
-
     /**
-     * Param regex
-     *
-     * @var $regex
-     *
-     * @access private
+     * Actual parameter regex
+     * 
+     * @var string
      */
     private $regex;
-
-
+    
     /**
-     * Param placeholder
-     *
-     * @var $placeholder
-     *
-     * @access private
+     * @var string
      */
     private $placeholder;
 
-
     /**
-     * Original param segment
+     * Original segment of the parameter
      *
-     * @var $segment
-     *
-     * @access private
+     * @var string
      */
     private $segment;
 
-
     /**
-     * Is the param optional?
-     *
-     * @var $optional
-     *
-     * @access private
+     * @var bool
      */
     private $optional;
 
-
     /**
-     * Is the param sticky?
-     *
-     * @var $sticky
-     *
-     * @access private
+     * @var bool
      */
     private $sticky;
 
-
     /**
-     * Param value
-     *
-     * @var $value
-     *
-     * @access public
+     * @var mixed
      */
     public $value;
 
-
     /**
-     * Placeholder regex patterns
+     * Parameter segment -> placeholder conversion array
      *
-     * @var static $placeholderPatterns
-     *
-     * @access private
+     * @var string[]
      */
     private static $placeholderPatterns = [
         '{num:[a-zA-Z0-9-_]*(\?}|})'  => '(:num)', # (:num) route
@@ -94,44 +68,28 @@ final class RouteParam
         '{[a-zA-Z0-9-_]*(\?}|})'      => '(:any)', # Everything else
     ];
 
-
     /**
-     * Placeholders regex replacements
+     * Parameter placeholder -> regex conversion array
      *
-     * @var static $placeholderReplacements
-     *
-     * @access private
+     * @var string[]
      */
     private static $placeholderReplacements = [
         '/\(:any\)/'  => '[^/]+',
         '/\(:num\)/'  => '[0-9]+',
     ];
 
-
-
     /**
-     * Get the placeholders patterns
+     * Gets the placeholder -> regex conversion array
      *
-     * @return array
-     *
-     * @access public
-     * @static
+     * @return string[]
      */
     public static function getPlaceholderReplacements()
     {
         return self::$placeholderReplacements;
     }
-
-
-
+    
     /**
-     * Class constructor
-     *
-     * @param  string $segment Route segment string
-     *
-     * @return mixed
-     *
-     * @access public
+     * @param string $segment Route segment
      */
     public function __construct(string $segment)
     {
@@ -167,78 +125,60 @@ final class RouteParam
         $this->sticky   = substr($this->name,0,1) == '_';
     }
 
-
     /**
-     * Get segment name
+     * Gets the segment name
      *
      * @return string
-     *
-     * @access public
      */
     public function getName()
     {
         return $this->name;
     }
 
-
     /**
-     * Get original segment
+     * Gets the original segment string
      *
      * @return string
-     *
-     * @access public
      */
     public function getSegment()
     {
         return $this->segment;
     }
 
-
     /**
-     * Get segment regex
+     * Gets the segment regex
      *
      * @return string
-     *
-     * @access public
      */
     public function getRegex()
     {
         return $this->regex;
     }
 
-
     /**
-     * Get segment placeholder
+     * Gets the segment placeholder
      *
      * @return string
-     *
-     * @access public
      */
     public function getPlaceholder()
     {
         return $this->placeholder;
     }
 
-
     /**
-     * Check if segment is optional
+     * Checks if the segment is optional
      *
      * @return bool
-     *
-     * @access public
      */
     public function isOptional()
     {
         return $this->optional;
     }
 
-
     /**
-     * Check if segment is sticky
+     * Checks if the segment is sticky
      *
      * @return bool
-     *
-     * @access public
      */
     public function isSticky()
     {

@@ -1,48 +1,101 @@
 <?php
 
-/**
- * Command class
+/*
+ * Luthier Framework
  *
- * @autor Anderson Salas <anderson@ingenia.me>
- * @licence MIT
+ * (c) 2018 Ingenia Software C.A
+ *
+ * This file is part of the Luthier Framework. See the LICENSE file for copyright
+ * information and license details
  */
 
 namespace Luthier\Routing;
 
 use Symfony\Component\Console\Command\Command as SfCommand;
-use Symfony\Component\Console\Input\{InputInterface, InputArgument, InputDefinition, InputOption};
+use Symfony\Component\Console\Input\{InputInterface, InputDefinition, InputOption};
 use Symfony\Component\Console\Output\OutputInterface;
 
+/**
+ * An application command
+ * 
+ * @author Anderson Salas <anderson@ingenia.me>
+ */
 class Command
 {
+    /**
+     * @var string
+     */
     protected $name;
 
+    /**
+     * @var callable|string
+     */
     protected $callback;
 
+    /**
+     * @var string
+     */
     protected $description = '';
 
+    /**
+     * @var string
+     */
     protected $help = '';
 
+    /**
+     * @var array
+     */
     protected $params = [];
 
+    /**
+     * @param string    $name     Command name
+     * @param callable  $callback Command callback
+     */
     public function __construct(string $name, callable $callback)
     {
         $this->name = $name;
         $this->callback = $callback;
     }
 
+    /**
+     * Sets the parameter description
+     * 
+     * @param  string  $description Description
+     * 
+     * @return self
+     */
     public function description(string $description)
     {
         $this->description = $description;
         return $this;
     }
 
+    /**
+     * Sets the parameter help
+     * 
+     * @param string $help
+     * 
+     * @return self
+     */
     public function help(string $help)
     {
         $this->help = $help;
         return $this;
     }
 
+    /**
+     * Adds a new command parameter
+     * 
+     * @param string  $name        Parameter name
+     * @param mixed   $shortcuts   Parameter shortcuts
+     * @param string  $description Parameter description
+     * @param string  $mode        Parameter mode (none|required|optional|array)
+     * @param mixed   $default     Set the parameter default value
+     * 
+     * @throws \Exception
+     * 
+     * @return self
+     */
     public function param(string $name, $shortcuts = null, string $description = '', string $mode = 'required', $default = null)
     {
         $modes = [
@@ -58,34 +111,65 @@ class Command
         }
 
         $this->params[] = new InputOption($name, $shortcuts, $mode, $description, $default);
+        
+        return $this;
     }
 
+    /**
+     * Gets the command name
+     * 
+     * @return string
+     */
     public function getName()
     {
         return $this->name;
     }
 
+    /**
+     * Gets the command callback
+     * 
+     * @return string|callable
+     */
     public function getCallback()
     {
         return $this->callback;
     }
 
+    /**
+     * Gets the command description
+     * 
+     * @return string
+     */
     public function getDescription()
     {
         return $this->description;
     }
 
+    /**
+     * Gets the command help
+     * 
+     * @return string
+     */
     public function getHelp()
     {
         return $this->help;
     }
 
+    /**
+     * Gets the command parameters
+     * 
+     * @return array
+     */
     public function getParams()
     {
         return $this->params;
     }
 
-
+    /**
+     * Compiles the command to a Symfony Application command
+     * 
+     * @return \Symfony\Component\Console\Command\Command
+     */
     public function compile()
     {
         $_command = &$this;

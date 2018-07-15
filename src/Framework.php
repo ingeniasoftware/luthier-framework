@@ -1,161 +1,115 @@
 <?php
 
-/**
+/*
  * Luthier Framework
  *
- * @autor Anderson Salas <anderson@ingenia.me>
- * @licence MIT
+ * (c) 2018 Ingenia Software C.A
+ *
+ * This file is part of the Luthier Framework. See the LICENSE file for copyright
+ * information and license details
  */
 
 namespace Luthier;
 
-use Luthier\Http\{Request, Response};
-use Luthier\Routing\Router;
-use Symfony\Component\EventDispatcher\EventDispatcher;
-use Symfony\Component\HttpFoundation\{Request as SfRequest, Response as SfResponse};
-use Symfony\Component\Dotenv\Dotenv;
-use Symfony\Component\Dotenv\Exception\PathException;
+use Luthier\Http\Request;
+use Luthier\Http\Response;
+use Luthier\Routing\RouteBuilder;
+use Symfony\Component\HttpKernel;
+use Symfony\Component\HttpFoundation\Request as SfRequest;
+use Symfony\Component\Console\Application;
+use Symfony\Component\Console\CommandLoader\FactoryCommandLoader;
 
+/**
+ * An application of Luthier Framework
+ *
+ * @author Anderson Salas <anderson@ingenia.me>
+ * 
+ * @todo Unit testing
+ * 
+ */
 class Framework
 {
     const VERSION = '0.1.0a';
 
     /**
-     * App instance object
-     *
-     * @var static $instance
-     *
-     * @access private
+     * @var \Luthier\Framework
      */
-    private static $instance;
-
+    protected static $instance;
 
     /**
-     * App request object
-     *
-     * @var $request
-     *
-     * @access protected
+     * @var \Symfony\Component\HttpFoundation\Request
      */
     protected $request;
 
-
     /**
-     * App response object
-     *
-     * @var $response
-     *
-     * @access protected
-     */
-    protected $response;
-
-
-    /**
-     * App environment folder
-     *
-     * @var $envFolder
-     *
-     * @access protected
+     * @var string
      */
     protected $envFolder;
-
+    
+    /** 
+     * @var string
+     */
+    protected $cacheFolder;
 
     /**
-     * App Dependency Injection container
-     *
-     * @var $container
-     *
-     * @access protected
+     * @var \Luthier\Container
      */
     protected $container;
 
-
     /**
-     * App config array
+     * Application configuration
      *
-     * @var $config
-     *
-     * @access protected
+     * @var array
      */
     protected $config = [];
-
-
-
+    
     /**
-     * Class constructor
-     *
-     * @param  ?string      $config  App configuration
-     * @param  ?Container   $container DI container
-     * @param  ?SfRequest   Symfony Request
-     * @param  ?SfResponse  Symfony Response
-     *
-     * @return mixed
-     *
-     * @access public
+     * @param array|null  $config     Application configuration
+     * @param Container   $container  Application container
+     * @param SfRequest   $request    Symfony request 
+     * 
+     * @throws \Exception
      */
-    public function __construct($config = null, ?Container $container = null, ?SfRequest $request = null, ?SfResponse $response = null)
+    public function __construct(?array $config = [], Container $container = null, SfRequest $request = null)
     {
-        // Registering Whoops!
-        (new \Whoops\Run)->pushHandler(new \Whoops\Handler\PrettyPageHandler())
-            ->register();
-
         $this->container = $container === NULL
             ? new Container()
             : $container;
 
-        if(is_string($config))
-        {
-            $this->envFolder = $envFolder;
-        }
-        else if(is_array($config) || $config === NULL)
-        {
-            $this->config = $config !== NULL
-                ? $config
-                : [];
-        }
-        else
-        {
-            throw new \Exception("Invalid application configuration format: must be an array or a string");
-        }
+        $this->config = $config !== NULL
+            ? $config
+            : [];
 
-        $this->request  = new Request($request);
-        $this->response = new Response($response);
+        $this->request = $request === NULL
+            ? SfRequest::createFromGlobals()
+            : $request;
+                    
+        (new \Whoops\Run)->pushHandler(new \Whoops\Handler\PrettyPageHandler())
+            ->register();
 
-        $reqContainers = [
-            'router'     => Router::class,
-            'dispatcher' => EventDispatcher::class
-        ];
-
-        foreach($reqContainers as $name => $class)
+        if($container === NULL)
         {
-            if(!$this->container->has($name))
+            foreach(Container::getDefaultContainer() as $service => [$class, $isPrivate])
             {
-                if($container !== NULL)
-                {
-                    throw new \Exception("Your custom container MUST have the '$name' service (instance of $class)");
-                }
-                $this->container->service($name, $class, true);
+                $this->container->service($service, $class, $isPrivate);
             }
         }
 
-        // Set the app instance as static variable
-        self::$instance = &$this;
-    }
+        $this->container->service('request',  Request::class);
+        $this->container->service('response', Response::class);
 
+    }
 
     /**
      * __call() magic method
      *
-     * @param  string $method
-     * @param  mixed $args
-     *
      * @return mixed
-     *
-     * @access public
      */
     public function __call($method, $args)
-    {
-        if(in_array(strtoupper($method), Router::HTTP_VERBS) || in_array($method, ['match', 'group', 'middleware', 'command']))
+    {        
+        if( in_array(strtoupper($method), RouteBuilder::HTTP_VERBS)
+            || in_array($method, ['match', 'command'])
+            || method_exists($this->container->get('router'), $method) )
         {
             return call_user_func_array([$this->container->get('router'), $method], $args);
         }
@@ -163,102 +117,45 @@ class Framework
         throw new \BadMethodCallException("Call to undefined method Luthier\Framework::{$method}() ");
     }
 
-
     /**
      * __get() magic method
      *
-     * @param  string  $property
-     *
      * @return mixed
-     *
-     * @access public
-     * @throw \Exception
      */
     public function __get($property)
     {
-        // Does the property exists?
         if(isset($this->{$property}))
         {
+            // Does the property exists?
             return $this->{$property};
         }
-        // Is the property registered as a service/property in the DI container?
         else if($this->container->has($property))
         {
+            // Is the property registered as a service/property in the DI container?
             return $this->container->get($property);
-        }
-        // Is the property named "route"? Return the current route
-        else if($property == 'route')
-        {
-            return $this->container->get('router')->getCurrentRoute();
         }
         else
         {
-            throw new \Exception("Undefined property Luthier\Framework::$property");
+            throw new \Exception("Trying to get undefined property Luthier\Framework::$property");
         }
     }
 
-
     /**
-     * Get app instance
+     * Gets the application Symfony request
      *
      * @return Request
-     *
-     * @access public
-     * @static
      */
-    public static function getInstance()
+    public function getRequest()
     {
-        return self::$instance;
+        return $this->request;
     }
 
-
     /**
-     * Get app .env folder
+     * Sets the application .env file path
      *
-     * @return string
-     *
-     * @access public
-     */
-    public function getEnvFolder()
-    {
-        return $this->envFolder;
-    }
-
-
-    /**
-     * Get app DI container
-     *
-     * @return Container
-     *
-     * @access public
-     */
-    public function getContainer()
-    {
-        return $this->container;
-    }
-
-
-    /**
-     * Get app config array
-     *
-     * @return mixed
-     *
-     * @access public
-     */
-    public function getConfig()
-    {
-        return $this->config;
-    }
-
-
-    /**
-     * Set app .env folder
-     *
-     * @param  string $envFolder
+     * @param string $envFolder Folder where is located the application .env file
      *
      * @return self
-     *
-     * @access public
      */
     public function setEnvFolder(string $envFolder)
     {
@@ -266,15 +163,13 @@ class Framework
         return $this;
     }
 
-
+    
     /**
-     * Set app DI container
+     * Sets the application dependency container
      *
-     * @param  Container $container
+     * @param \Luthier\Container $container The dependency injection container
      *
-     * @return self
-     *
-     * @access public
+     * @return mixed
      */
     public function setContainer(Container $container)
     {
@@ -282,148 +177,101 @@ class Framework
         return $this;
     }
 
-
     /**
-     * Set the Symfony request
+     * Sets the application Symfony request
      *
-     * @param  SfRequest    $request
+     * @param \Symfony\Component\HttpFoundation\Request $request Symfony Request object
      *
      * @return self
-     *
-     * @access public
      */
     public function setRequest(SfRequest $request)
     {
         $this->request = $request;
         return $this;
     }
-
-
+    
     /**
-     * Set the Symfony response
+     * Sets (or appends) the application configuration array
      *
-     * @param  SfResponse   $response
+     * @param  array  $config
+     * @param  bool   $append
      *
-     * @return mixed
-     *
-     * @access public
+     * @return self
      */
-    public function setResponse(SfResponse $response)
+    public function setConfig(array $config, bool $append = FALSE)
     {
-        $this->response = $response;
-        return $this;
-    }
-
-
-
-    /**
-     * Set app config array
-     *
-     * @param  array        $config
-     *
-     * @return mixed
-     *
-     * @access public
-     */
-    public function setConfig(array $config)
-    {
-        $this->config = $config;
-        return $this;
-    }
-
-
-    /**
-     * Load (optional) useful helper functions
-     *
-     * @return void
-     *
-     * @access public
-     */
-    public function withHelpers(): void
-    {
-        require_once __DIR__ . '/Helpers.php';
-    }
-
-
-    /**
-     * Configures the app and run it
-     *
-     * @return mixed
-     *
-     * @access public
-     */
-    public function run()
-    {
-        $reqConfig = [
-            'APP_ENV',
-        ];
-
-        $defConfig = [
-            'APP_ENV' => 'development',
-        ];
-
-        $config = [];
-
-        if($this->envFolder !== NULL)
+        if(!$append)
         {
-            try
-            {
-                (new Dotenv())->load( ($this->envFolder !== NULL ? $this->envFolder : '') . '.env' );
-            }
-            catch(PathException $e)
-            {
-                throw new \Exception('Unable to find your application .env file. Does the file exists?');
-            }
-            catch(\Exception $e)
-            {
-                throw new \Exception('Unable to parse your application .env file');
-            }
-
-            foreach($reqConfig as $_name)
-            {
-                if(getenv($_name) === FALSE)
-                {
-                    throw new \Exception('Error: Missing ' . $_name . ' parameter in your .env file');
-                }
-                $config[$_name] = getenv($_name);
-            }
-        }
-        else if(!empty($this->config))
-        {
-            foreach($reqConfig as $_name)
-            {
-                if(!isset($this->config[$_name]))
-                {
-                    throw new \Exception('Error: Missing ' . $_name . ' parameter in your application configuration array');
-                }
-                $config[$_name] = $this->config[$_name];
-            }
+            $this->config = $config;
         }
         else
         {
-            $config = $defConfig;
+            $this->config = array_merge($this->config, $config);
         }
+        return $this;
+    }
 
-        foreach($config as $name => $value)
-        {
-            $this->container->parameter($name, $value, true);
-        }
+    /**
+     * Checks if the application is running in a CLI environment
+     *
+     * @return bool
+     */
+    public function isCli()
+    {
+        return (PHP_SAPI === 'cli' OR defined('STDIN'));
+    }
 
-        if(!in_array($config['APP_ENV'], ['development','production'], TRUE))
+    /**
+     * Runs the application
+     *
+     * @return void
+     */
+    public function run()
+    {        
+        $config = (new Configuration($this->config, $this->envFolder))->parse();
+
+        if(!in_array($config['APP_ENV'], ['development', 'production'], TRUE))
         {
             throw new \Exception('The application environment is not valid');
         }
 
-        error_reporting( $config['APP_ENV'] == 'development' ? E_ALL : 0 );
-        ini_set('display_errors', $config['APP_ENV'] == 'development' ? 'on' : 'off' );
-
-        $router = $this->container->get('router');
-
-        if(!$router instanceof Router)
+        switch($config['APP_ENV'])
         {
-            throw new \Exception('Error: Invalid router. MUST be an instance of the ' . Router::class . 'class');
+            case 'development':
+                error_reporting(-1);
+                ini_set('display_errors',1);
+                break;
+            case 'production':
+                error_reporting(0);
+                ini_set('display_errors',0);
         }
 
-        $router->handle($this->request, $this->response);
+        foreach($config as $name => $value)
+        {
+            $this->container->parameter($name, $value);
+        }
+        
+        if(!$this->isCli())
+        {
+            $requestHandler = $this->container->get('request_handler');
+            $cacheFolder    = $this->container->get('APP_CACHE');
+                        
+            if(!empty($cacheFolder))
+            {
+                $requestHandler = new HttpKernel\HttpCache\HttpCache(
+                    $requestHandler,
+                    new HttpKernel\HttpCache\Store($cacheFolder)
+                );
+            }
+            
+            $requestHandler->handle($this->request)->send();
+        }
+        else
+        {
+            $commandLoader = new FactoryCommandLoader($this->container->get('router')->getCommands());
+            $application   = new Application();
+            $application->setCommandLoader($commandLoader)->run();
+        }
     }
 }
+

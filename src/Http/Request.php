@@ -1,56 +1,75 @@
 <?php
 
-/**
- * Request class
+/*
+ * Luthier Framework
  *
- * @autor Anderson Salas <anderson@ingenia.me>
- * @licence MIT
+ * (c) 2018 Ingenia Software C.A
+ *
+ * This file is part of the Luthier Framework. See the LICENSE file for copyright
+ * information and license details
  */
 
 namespace Luthier\Http;
 
+use Psr\Container\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request as SfRequest;
 
+/**
+ * Wrapper of the Symfony Request object 
+ * 
+ * Includes shortcuts for manipulating incoming requests. Is registered
+ * in the dependency container as the "request" service
+ * 
+ * @author Anderson Salas <anderson@ingenia.me>
+ */
 class Request
 {
     /**
      * Symfony request object
      *
-     * @var $request
-     *
-     * @access protected
+     * @var \Symfony\Component\HttpFoundation\Request
      */
     protected $request;
 
-
+    /**
+     * @var \Psr\Container\ContainerInterface
+     */
+    protected $container;
 
     /**
-     * Class constructor
-     *
-     * @param  SfRequest $request Symfony Request object (optional)
-     *
-     * @return mixed
-     *
-     * @access public
+     * @param ContainerInterface $container
      */
-    public function __construct(SfRequest $request = NULL)
+    public function __construct(ContainerInterface $container)
+    {
+        $this->container = $container;
+    }
+    
+    /**
+     * Gets the Symfony request object
+     *
+     * @return \Symfony\Component\HttpFoundation\Request
+     */
+    public function getRequest()
+    {
+        return $this->request;
+    }
+    
+    /**
+     * Sets the Symfony request object
+     * 
+     * @param SfRequest $request
+     * 
+     * @return self
+     */
+    public function setRequest(SfRequest $request = null)
     {
         $this->request = $request === NULL
             ? SfRequest::createFromGlobals()
             : $request;
+        
+        return $this;
     }
 
-
-    /**
-     * __call() magic method
-     *
-     * @param  mixed  $property
-     * @param  mixed  $args
-     *
-     * @return mixed
-     *
-     * @access public
-     */
     public function __call($property, $args)
     {
         // Is any of the following shortcuts?
@@ -86,42 +105,14 @@ class Request
         }
     }
 
-
     /**
-     * Get Symfony request object
-     *
-     * @return SfResponse
-     *
-     * @access public
-     */
-    public function getRequest()
-    {
-        return $this->request;
-    }
-
-
-    /**
-     * Check if the current request is an AJAX request
+     * Checks if the current request is an AJAX request
      *
      * @return bool
-     *
-     * @access public
      */
     public function isAjax()
     {
         return strtolower($this->server('HTTP_X_REQUESTED_WITH','')) === 'xmlhttprequest';
     }
 
-
-    /**
-     * Check if the current request is a CLI request (alias of using the is_cli() function)
-     *
-     * @return mixed
-     *
-     * @access public
-     */
-    public function isCli()
-    {
-        return (PHP_SAPI === 'cli' OR defined('STDIN'));;
-    }
 }
