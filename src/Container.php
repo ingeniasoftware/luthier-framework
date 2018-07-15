@@ -28,12 +28,6 @@ use Pimple\Psr11\ServiceLocator;
  * The get() and has() methods retrieves and checks for the existence of
  * a element inside the container.
  *
- * All elements can be marked as private, excluding them of the PSR-11 container which is
- * passed to the application controllers / route closure controllers
- *
- * Also, if you name a element of the container starting with a dot (.) it will be marked
- * as private.
- *
  * @author Anderson Salas <anderson@ingenia.me>
  */
 class Container
@@ -52,12 +46,7 @@ class Container
      * @var array
      */
     protected $services = [];
-    
-    /**
-     * @var array
-     */
-    protected $privateItems = [];
-    
+        
     /**
      * The default container
      *
@@ -85,27 +74,7 @@ class Container
     {
         return $this->get($service);
     }
-    
-    /**
-     * Gets a PSR-11 Pimple container instance
-     *
-     * This methods excludes ALL private services/parameters/factories before creating
-     * the PSR-11 container instance
-     *
-     * @return \Pimple\Psr11\Container
-     */
-    public function getPsrContainer()
-    {
-        $container = clone $this->container;
         
-        foreach($this->privateItems as $service)
-        {
-            unset($container[$service]);
-        }
-        
-        return new PimplePsrContainer($container);
-    }
-    
     /**
      * Gets a service callback from a string
      * 
@@ -156,27 +125,15 @@ class Container
      *
      * @param  string           $name     Service name
      * @param  callable|string  $service  Service callback
-     * @param  bool             $private  Mark the service as private
      *
      * @return self
      */
-    public function service(string $name, $service, bool $private = false)
-    {
-        if(substr($name,0,1) == '.')
-        {
-            $name    = substr($name,1);
-            $private = true;
-        }
-       
+    public function service(string $name, $service)
+    {       
         $this->container[$name] = is_string($service) 
             ? $this->getServiceCallback($service)
             : $service;
-        
-        if(!in_array($name, $this->privateItems) && $private)
-        {
-            $this->privateItems[] = $name;
-        }
-        
+
         if(!in_array($name, $this->services))
         {
             $this->services[] = $name;
@@ -196,25 +153,14 @@ class Container
      *
      * @return self
      */
-    public function parameter(string $name, $value, bool $private = false)
+    public function parameter(string $name, $value)
     {
-        if(substr($name,0,1) == '.')
-        {
-            $name    = substr($name,1);
-            $private = true;
-        }
-        
         $name = strtoupper($name);
         
         $this->container[$name] = is_callable($value)
-        ? $this->container->protect($value)
-        : $value;
-        
-        if(!in_array($name, $this->privateItems) && $private)
-        {
-            $this->privateItems[] = $name;
-        }
-        
+            ? $this->container->protect($value)
+            : $value;
+               
         if(!in_array($name, $this->parameters))
         {
             $this->parameters[] = $name;
@@ -228,27 +174,15 @@ class Container
      *
      * @param  string           $name     Factory name
      * @param  string|callable  $factory  Factory callback
-     * @param  bool             $private  Mark the factory as private
      *
      * @return self
      */
-    public function factory(string $name, $factory, bool $private = false)
-    {
-        if(substr($name,0,1) == '.')
-        {
-            $name    = substr($name,1);
-            $private = true;
-        }
-        
+    public function factory(string $name, $factory)
+    {        
         $this->container[$name] = is_string($factory)
             ? $this->getServiceCallback($factory)
             : $service;
-        
-        if(!in_array($name, $this->privateItems) && $private)
-        {
-            $this->privateItems[] = $name;
-        }
-        
+                
         if(!in_array($name, $this->services))
         {
             $this->services[] = $name;
