@@ -12,7 +12,6 @@
 namespace Luthier;
 
 use Pimple\Container as PimpleContainer;
-use Pimple\Psr11\Container as PimplePsrContainer;
 use Pimple\Psr11\ServiceLocator;
 
 /**
@@ -53,9 +52,9 @@ class Container
      * @var array
      */
     protected static $defaultContainer = [
-        'router'          => [\Luthier\Routing\RouteBuilder::class, true],
-        'request_handler' => [\Luthier\Http\RequestHandler::class, true],
-        'dispatcher'      => [\Symfony\Component\EventDispatcher\EventDispatcher::class, true],
+        'router'          => \Luthier\Routing\RouteBuilder::class,
+        'request_handler' => \Luthier\Http\RequestHandler::class,
+        'dispatcher'      => \Symfony\Component\EventDispatcher\EventDispatcher::class,
     ];
     
     public function __construct()
@@ -76,7 +75,7 @@ class Container
     }
         
     /**
-     * Gets a service callback from a string
+     * Gets a service callback from a string (in this case, a fully qualified class name)
      * 
      * @param string $name The service class name
      * 
@@ -109,9 +108,6 @@ class Container
     
     /**
      * Returns the default Luthier Framework container
-     *
-     * This is used during the framework initialization if a custom container is provided
-     * in order to check that they have all the required services into it.
      *
      * @return array
      */
@@ -224,5 +220,13 @@ class Container
     public function has(string $name)
     {
         return isset($this->container[$name]);
+    }
+    
+    /**
+     * @return array
+     */
+    public function getServices()
+    {
+        return $this->services;  
     }
 }
