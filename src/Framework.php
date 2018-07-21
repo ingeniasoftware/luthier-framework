@@ -12,7 +12,6 @@
 namespace Luthier;
 
 use Luthier\Http\Request;
-use Luthier\Http\Response;
 use Luthier\Routing\RouteBuilder;
 use Symfony\Component\HttpKernel;
 use Symfony\Component\HttpFoundation\Request as SfRequest;
@@ -20,15 +19,15 @@ use Symfony\Component\Console\Application;
 use Symfony\Component\Console\CommandLoader\FactoryCommandLoader;
 
 /**
- * An application of Luthier Framework
+ * An application of Luthier Framework. All instances of this class
+ * are a representation of the framework.
  *
  * @author Anderson Salas <anderson@ingenia.me>
- * 
- * @todo Unit testing
- * 
  */
 class Framework
 {
+    use UtilsTrait;
+    
     const VERSION = '0.1.0a';
 
     /**
@@ -115,14 +114,8 @@ class Framework
      */
     public function __get($property)
     {
-        if(isset($this->{$property}))
+        if($this->container->has($property))
         {
-            // Does the property exists?
-            return $this->{$property};
-        }
-        else if($this->container->has($property))
-        {
-            // Is the property registered as a service/property in the DI container?
             return $this->container->get($property);
         }
         else
@@ -154,7 +147,6 @@ class Framework
         return $this;
     }
 
-    
     /**
      * Sets the application dependency container
      *
@@ -166,6 +158,14 @@ class Framework
     {
         $this->container = $container;
         return $this;
+    }
+    
+    /**
+     * @return \Luthier\Container
+     */
+    public function getContainer()
+    {
+        return $this->container;
     }
 
     /**
