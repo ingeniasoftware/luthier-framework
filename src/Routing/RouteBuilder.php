@@ -38,7 +38,7 @@ use function Whoops\Util\ob_start;
  *   * head()
  *   * delete()
  *   
- * Multiple HTTP Verbs can be accepted in a route using the match([]) method
+ * Multiple HTTP Verbs can be accepted in a route by using the match([]) method
  * 
  * The Route Builder also stores the callbacks what will be invoked when an application
  * error/exception occurs.
@@ -338,11 +338,11 @@ class RouteBuilder
      * 
      * @throws \InvalidArgumentException
      * 
-     * @return self
+     * @return void
      */
     public function middleware($middleware)
     {
-        if( count( func_get_args() ) == 2)
+        if(count(func_get_args()) == 2)
         {
             [$name, $middleware] = func_get_args();
 
@@ -356,23 +356,23 @@ class RouteBuilder
                 throw new \InvalidArgumentException("Invalid middleware definition. Must be a valid callback." . (is_string($middleware) ? " (Does the '$middleware' class exists?)" : ''));
             }
 
-            return self::$context['middleware']['alias'][$name] = $middleware;
+            self::$context['middleware']['alias'][$name] = $middleware;
         }
-
-        if(!is_array($middleware))
+        else 
         {
-            $middleware = [ $middleware ];
-        }
-
-        foreach($middleware as $_middleware)
-        {
-            if(!in_array($_middleware, self::$context['middleware']['global']))
+            if(!is_array($middleware))
             {
-                self::$context['middleware']['global'][] = $_middleware;
+                $middleware = [ $middleware ];
+            }
+            
+            foreach($middleware as $_middleware)
+            {
+                if(!in_array($_middleware, self::$context['middleware']['global']))
+                {
+                    self::$context['middleware']['global'][] = $_middleware;
+                }
             }
         }
-        
-        return $this;
     }
     
     /**
@@ -384,13 +384,13 @@ class RouteBuilder
      */
     public function getRoutes()
     {
-        foreach($this->routes as $i => $_route)
+        foreach($this->routes as $i => $route)
         {
-            [$name, $route] = $_route->compile();
+            [$name, $route] = $route->compile();
 
             if(empty($name))
             {
-                $name = '__unnamed_route_' . str_pad($i ,5, '0', STR_PAD_LEFT);
+                $name = '__unnamed_route_' . str_pad($i ,3, '0', STR_PAD_LEFT);
             }
             else
             {
@@ -398,12 +398,14 @@ class RouteBuilder
                 {
                     throw new \Exception("Duplicated '$name' route");
                 }
-                $this->names[$name] = $_route->getStickyParams();
+                $this->names[$name] = $route->getStickyParams();
             }
+            
             $this->routeCollection->add($name, $route);
         }
 
         $this->routeGenerator = new UrlGenerator($this->routeCollection, $this->requestContext);
+        
         return $this->routeCollection;
     }
     
@@ -608,7 +610,6 @@ class RouteBuilder
      */
     public function getWelcomeScreenResponse(string $message = null)
     {
-        
         if($this->container->get('APP_ENV') == 'production')
         {
             throw new \Symfony\Component\HttpKernel\Exception\NotFoundHttpException();
