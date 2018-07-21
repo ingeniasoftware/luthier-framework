@@ -12,10 +12,13 @@
 namespace Luthier;
 
 use Psr\Container\ContainerInterface;
+use Luthier\Routing\Route;
+use Luthier\Http\Request;
+use Luthier\Http\Response;
 
 /**
- * Wrapper for the application container with shortcuts for basic operations with
- * the \Luthier\Http\Response object.
+ * Simple wrapper of the application dependency container, that will be provided
+ * by the request handler during the route match
  *
  * @author Anderson Salas <anderson@ingenia.me>
  */
@@ -37,15 +40,63 @@ class Controller
     protected $response;
 
     /**
-     * @param ContainerInterface $container
+     * @var \Luthier\Routing\Route
      */
-    public function __construct(ContainerInterface $container)
+    protected $route;
+    
+    /**
+     * @param ContainerInterface $container
+     * 
+     * @return self
+     */
+    public function setContainer(ContainerInterface $container = null)
     {
         $this->container = $container;
-        $this->request   = $container->get('request');
-        $this->response  = $container->get('response');
+        return $this;
     }
-
+    
+    /**
+     * @param Request $request
+     * 
+     * @return self
+     */
+    public function setRequest(Request $request)
+    {
+        $this->request = $request;
+        return $this;
+    }
+    
+    /**
+     * @param Response $response
+     * 
+     * @return self
+     */
+    public function setResponse(Response $response)
+    {
+        $this->response = $response;
+        return $this;
+    }
+    
+    /**
+     * @param Route $route
+     * 
+     * @return self
+     */
+    public function setRoute(Route $route)
+    {
+        $this->route = $route;
+        return $this;
+    }
+    
+    /**
+     * __get() magic method
+     * 
+     * @param string $property
+     * 
+     * @throws \Exception
+     * 
+     * @return mixed
+     */
     public function __get($property)
     {
         if($this->container->has($property))
@@ -63,15 +114,15 @@ class Controller
     }
 
     /**
-     * Generates a route URL by its name
+     * Generates a route URL
      *
      * @param  string  $name    Route name
      * @param  array   $params  Route parameters
      *
      * @return string
      */
-    protected function route(string $name, array $params = [])
-    {
-        return Framework::container('router')->getRouteByName($name, $params);
+    public function route(string $name, array $params = [])
+    {        
+        return $this->container->get('router')->getRouteByName($name, $params);
     }
 }

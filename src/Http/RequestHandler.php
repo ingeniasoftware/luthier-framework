@@ -19,12 +19,13 @@ use Symfony\Component\Routing\Exception\ResourceNotFoundException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Matcher\UrlMatcher;
 use Symfony\Component\HttpFoundation\Request as SfRequest;
+use Symfony\Component\HttpKernel\Controller\ControllerResolver;
 use Symfony\Component\HttpKernel\Controller\ArgumentResolver;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
 
 /**
  * Framework own implementation of the Symfony HttpKernelInterface.
- * Receives and handles the requests, returning a Symfony Response object.
+ * Handles the requests and returns a Symfony response.
  * 
  * @author Anderson Salas <anderson@ingenia.me>
  */
@@ -46,6 +47,11 @@ class RequestHandler implements HttpKernelInterface
     protected $matcher;
 
     /**
+     * @var \Symfony\Component\HttpKernel\Controller\ControllerResolver
+     */
+    protected $controllerResolver;
+    
+    /**
      * @var \Symfony\Component\HttpKernel\Controller\ArgumentResolver
      */
     protected $argumentResolver;
@@ -55,14 +61,14 @@ class RequestHandler implements HttpKernelInterface
      * 
      * @var \Luthier\Http\Request
      */
-    protected $luthierRequest;
+    protected $request;
     
     /**
      * Luthier Response object
      * 
      * @var \Luthier\Http\Response
      */
-    protected $luthierResponse;
+    protected $response;
     
     /**
      * @var \Symfony\Component\EventDispatcher\EventDispatcher
@@ -74,56 +80,69 @@ class RequestHandler implements HttpKernelInterface
      */
     public function __construct(ContainerInterface $container)
     {
-        $this->container = $container;
-        $this->router = $container->get('router');
+        $this->container  = $container;
+        $this->router     = $container->get('router');
         $this->dispatcher = $container->get('dispatcher');
-        $this->luthierRequest = $container->get('request');
-        $this->luthierResponse = $container->get('response');
+        
+        $this->request  = new Request($container);
+        $this->response = new Response($container);
         
         $this->matcher = new UrlMatcher($this->router->getRoutes(), $this->router->getRequestContext());
-        $this->argumentResolver = new ArgumentResolver();
+       
+        $this->argumentResolver   = new ArgumentResolver();
+        $this->controllerResolver = new ControllerResolver();
     }
 
     /**
-     * Resolves the controller and arguments from matched route
-     * 
      * @param SfRequest $request
-     * @param array $match
+     * @param array     $match
+     * @param Route     $route
+     * 
      * @throws \Exception
+     * 
      * @return array ([$callback, $arguments])
      */
-    private function resolveController(SfRequest &$request, array $match)
+    private function resolveController(SfRequest &$request, array $match, Route $route)
     {
-        $match['request']  = $this->luthierRequest->setRequest($request);
-        $match['response'] = $this->luthierResponse->setResponse();
-        
+        // Both the (Luthier) Request and Response objects will be available 
+        // as typehinted parameters of our routes callbacks/methods, just in case that
+        // we prefer using that instead the $this->request/$this->response
+        // properties
+        $match['request']  = $this->request->setRequest($request);
+        $match['response'] = $this->response->setResponse();
         $request->attributes->add($match);
+        
+        $callback = $this->controllerResolver->getController($request);
 
-        if(is_string($match['_controller']))
+        // Is the current controller a Closure? Bind a new instance of the 
+        // Luthier\Controller class
+        if($callback instanceof \Closure)
         {
-            $callback = explode('::', $match['_controller'], 2);
-            
-            if(isset($callback[0]) && isset($callback[1]))
-            {
-                $callback = [new $callback[0]($this->container), $callback[1]];
-                
-                if(!$callback[0] instanceof Controller)
-                {
-                    throw new \Exception("Your controller MUST extend the Luthier\Controller class");
-                }
-            }
-            else
-            {
-                throw new \Exception("Unable to create a new instance of {$match['_controller']}");
-            }
+            $callback = \Closure::bind(
+                $callback, 
+                ( new Controller() )->setContainer($this->container)
+                    ->setRequest($this->request)
+                    ->setResponse($this->response)
+                    ->setRoute($route),
+                Controller::class
+            );
         }
-        elseif(is_callable($match['_controller']) && $match['_controller'] instanceof \Closure)
+        // Is the current controller an instance of Luthier\Controller? set the container,
+        // request, response and route object
+        else if(isset($callback[0]) && $callback[0] instanceof Controller)
         {
-            $callback = \Closure::bind($match['_controller'], new Controller($this->container), Controller::class);
+            $callback[0]->setContainer($this->container)
+                ->setRequest($this->request)
+                ->setResponse($this->response)
+                ->setRoute($route);
         }
-        else
+        else 
         {
-            throw new \Exception("The route controller action is not a valid callback");
+            // Not a closure or a object? we don't will handle that
+            if(!isset($callback[0]) && !is_object($callback[0]))
+            {
+                throw new \Exception("The route does not contain a valid callback");
+            }
         }
         
         $arguments = $this->argumentResolver->getArguments($request, $callback);
@@ -168,10 +187,11 @@ class RequestHandler implements HttpKernelInterface
      */
     public function handle(SfRequest $request, $type = HttpKernelInterface::MASTER_REQUEST, $catch = true)
     {
-        $luthierRequest  = $this->luthierRequest;
-        $luthierResponse = $this->luthierResponse;
+        $luthierRequest  = $this->request;
+        $luthierResponse = $this->response;
         $dispatcher = $this->dispatcher;
         
+        // Dispatch the 'request' event
         $this->dispatcher->dispatch('request', new Events\RequestEvent($luthierRequest, $luthierResponse));
 
         if($this->router->count() == 0)
@@ -184,14 +204,18 @@ class RequestHandler implements HttpKernelInterface
         try
         {
             $match = $this->matcher->match($request->getPathInfo());
+         
+            /** @var \Luthier\Routing\Route */
             $route = $match['_orig_route'];
             
-            [$callback, $arguments] = $this->resolveController($request, $match);
+            [$callback, $arguments] = $this->resolveController($request, $match, $route);
             $this->prepareRouting($request->getPathInfo(), $arguments, $route);
+            
             $middlewareStack = $this->router->getMiddlewareStack($route);
             
+            // Dispatch the 'pre_controller' event
             $this->dispatcher->dispatch('pre_controller', new Events\PreControllerEvent($luthierRequest, $luthierResponse, $middlewareStack, $callback, $arguments));
-            
+           
             ResponseIterator::handle($middlewareStack, $callback, $arguments, $luthierRequest, $luthierResponse);
         }
         catch (ResourceNotFoundException|NotFoundHttpException $e)
@@ -202,7 +226,8 @@ class RequestHandler implements HttpKernelInterface
         {
             $finalResponse = call_user_func_array($this->router->getErrorCallback(), [$luthierRequest, $finalResponse ?? $luthierResponse, $route ?? null, $e]);
         }
-
+        
+        // Dispatch the 'response' event
         $this->dispatcher->dispatch('response', new Events\ResponseEvent($luthierRequest, $luthierResponse));
         
         return $luthierResponse->getResponse();
