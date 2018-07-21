@@ -13,6 +13,7 @@ namespace Luthier\Http;
 
 use Psr\Container\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request as SfRequest;
+use Luthier\UtilsTrait;
 
 /**
  * Wrapper of the Symfony Request object 
@@ -24,6 +25,8 @@ use Symfony\Component\HttpFoundation\Request as SfRequest;
  */
 class Request
 {
+    use UtilsTrait;
+    
     /**
      * Symfony request object
      *
