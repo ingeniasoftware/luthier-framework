@@ -72,32 +72,23 @@ class Framework
      */
     public function __construct(?array $config = [], Container $container = null, SfRequest $request = null)
     {
-        $this->container = $container === NULL
-            ? new Container()
-            : $container;
-
-        $this->config = $config !== NULL
-            ? $config
-            : [];
-
-        $this->request = $request === NULL
-            ? SfRequest::createFromGlobals()
-            : $request;
-                    
-        (new \Whoops\Run)->pushHandler(new \Whoops\Handler\PrettyPageHandler())
-            ->register();
-
-        if($container === NULL)
+        $this->container = $container ?? new Container();
+        $this->config    = $config    ?? [];
+        $this->request   = $request   ?? SfRequest::createFromGlobals();
+        
+        if(!defined('LUTHIER_TEST_MODE'))
         {
-            foreach(Container::getDefaultContainer() as $service => [$class, $isPrivate])
+            (new \Whoops\Run)->pushHandler(new \Whoops\Handler\PrettyPageHandler())
+                ->register();
+        }
+        
+        foreach(Container::getDefaultContainer() as $name => $class)
+        {
+            if(!$this->container->has($name))
             {
-                $this->container->service($service, $class, $isPrivate);
+                $this->container->service($name, $class);
             }
         }
-
-        $this->container->service('request',  Request::class);
-        $this->container->service('response', Response::class);
-
     }
 
     /**
