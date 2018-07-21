@@ -15,8 +15,12 @@ use Luthier\Routing\RouteBuilder;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 
 /**
- * Iterates over the current route request middleware and finally
- * and finally returns a response
+ * Iterates over the given middleware stack and finally executes the route
+ * controller/closure callback. 
+ * 
+ * Please note that this class is used by the built-in Luthier Framework
+ * Request Handler ('request_handler' service), if you use a custom request 
+ * handler this class probably may not be compatible.
  * 
  * @author Anderson Salas <anderson@ingenia.me>
  */
@@ -42,7 +46,7 @@ class ResponseIterator
     private static $callback;
 
     /**
-     * Handles the provided request stacks and returns a response
+     * Iterates over the provided request stack
      * 
      * @param array      $stack      Request stack
      * @param callable   $callback   Route callback
@@ -54,41 +58,40 @@ class ResponseIterator
      */
     public static function handle(array $stack, callable $callback, array $arguments, Request $request, Response $response)
     {
-        self::$index = 1;
-        self::$stack = $stack;
-        self::$callback = [$callback, $arguments];
-                
-        if(count(self::$stack) > 0)
+        if(count($stack) > 0)
         {
+            self::$index = 0;
+            self::$stack = $stack;
+            self::$callback = [$callback, $arguments];   
+            
             $middleware = RouteBuilder::getMiddleware(self::$stack[0]);
-            $middlewareResponse = $middleware($request, $response, function($request, $response){
+            
+            Response::getRealResponse($middleware($request, $response, function($request, $response){
                 return \Luthier\Http\ResponseIterator::next($request, $response);
-            });
-            Response::getRealResponse($middlewareResponse, $response);
+            }), $response);
         }
         else
         {
-            [$callback, $arguments] = self::$callback;
-            Response::getRealResponse(call_user_func_array($callback, $arguments), $response);
+            Response::getRealResponse($callback(...$arguments), $response);
         }
     }
         
     /**
-     * Returns the current middleware in the queue, or the final response
-     * if there is not no more middleware left 
+     * Returns the current middleware in the queue, or null if no more middleware
+     * left
      *  
-     * @return array ([?callable $currentMiddleware, ?array $finalResponse])
+     * @return array callable|null
      */
     public static function iterate()
     {
         return isset(self::$stack[++self::$index])
-            ? [ self::$stack[self::$index] , NULL ]
-            : [ NULL, self::$callback ];
+            ? self::$stack[self::$index]
+            : null;
     }
 
     /**
-     * Returns a callback of the next middleware in the queue based in the current
-     * response iterator index
+     * Returns a callable of the next middleware in the queue based in the current
+     * iterator index
      * 
      * @param Request $request
      * @param Response $response
@@ -102,17 +105,17 @@ class ResponseIterator
             return;
         }
 
-        [$currentMiddleware, $finalResponse] = self::iterate();
+        $middleware = self::iterate();
 
-        if($finalResponse !== NULL)
+        if($middleware === NULL)
         {
-            [$callback, $arguments] = $finalResponse;
-            return call_user_func_array($callback, $arguments);
+            [$callback, $arguments] = self::$callback;
+            return $callback(...$arguments);
         }
         else
         {
-            $middleware = RouteBuilder::getMiddleware($currentMiddleware);
-            return $currentMiddleware($request, $response, function($request,$response){
+            $middleware = RouteBuilder::getMiddleware($middleware);
+            return $middleware($request, $response, function($request,$response){
                 return \Luthier\Http\ResponseIterator::next($request, $response);
             });
         }
