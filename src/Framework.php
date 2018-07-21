@@ -210,15 +210,16 @@ class Framework
         }
         return $this;
     }
-
+    
     /**
-     * Checks if the application is running in a CLI environment
-     *
-     * @return bool
+     * Gets the parsed configuration
+     * 
+     * @return array
      */
-    public function isCli()
+    public function getConfig()
     {
-        return (PHP_SAPI === 'cli' OR defined('STDIN'));
+        $configuration = new Configuration($this->config, $this->envFolder);
+        return $configuration->parse();
     }
 
     /**
@@ -228,7 +229,7 @@ class Framework
      */
     public function run()
     {        
-        $config = (new Configuration($this->config, $this->envFolder))->parse();
+        $config = $this->getConfig();
 
         if(!in_array($config['APP_ENV'], ['development', 'production'], TRUE))
         {

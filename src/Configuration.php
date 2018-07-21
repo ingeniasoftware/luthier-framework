@@ -46,10 +46,10 @@ class Configuration
      * @var array
      */
     protected static $defaultConfig = [
-        'APP_ENV'   => ['development', true],
-        'APP_NAME'  => ['Luthier', false],
-        'APP_INDEX' => [null, false],
-        'APP_CACHE' => [null, true],
+        'APP_ENV'   => 'development',
+        'APP_NAME'  => 'Luthier',
+        'APP_INDEX' => null,
+        'APP_CACHE' => null,
     ];
 
     /**
@@ -78,59 +78,40 @@ class Configuration
     {
         $config = [];
 
-        if($this->envFolder !== NULL  || !empty($this->config))
+        if($this->envFolder !== NULL)
         {
-            if($this->envFolder !== NULL)
+            try
             {
-                try
-                {
-                    (new Dotenv())->load( ($this->envFolder !== NULL ? $this->envFolder . '/' : '' ) . '.env' );
-                }
-                catch(PathException $e)
-                {
-                    throw new \Exception('Unable to find your application .env file. Does the file exists?');
-                }
-                catch(\Exception $e)
-                {
-                    throw new \Exception('Unable to parse your application .env file');
-                }
+                (new Dotenv())->load( ($this->envFolder !== NULL ? $this->envFolder . '/' : '' ) . '.env' );
             }
-
-            foreach(self::$defaultConfig as $name => [$default, $isRequired])
+            catch(PathException $e)
             {
-                if(getenv($name) !== FALSE)
-                {
-                    $config[$name] = getenv($name);
-                }
-                else if(isset($this->config[$name]))
-                {
-                    $config[$name] = $this->config[$name];
-                }
-                else
-                {
-                    if($default !== NULL && !$isRequired)
-                    {
-                        $config[$name] = $default;
-                        continue;
-                    }
-                    if($isRequired)
-                    {
-                        throw new \Exception('Missing required "' . $name . '" parameter in your application configuration');
-                    }
-                }
+                throw new \Exception('Unable to find your application .env file. Does the file exists?');
             }
-        }
-        else
-        {
-            foreach(self::$defaultConfig as $name => [$default, $isRequired])
+            catch(\Exception $e)
             {
-                if($isRequired || $default !== NULL)
-                {
-                    $config[$name] = $default;
-                }
+                throw new \Exception('Unable to parse your application .env file');
             }
         }
 
+        // Failsafe base configuration
+        foreach(self::$defaultConfig as $name => $default)
+        {
+            if($this->envFolder !== NULL && getenv($name) !== FALSE)
+            {
+                $config[$name] = getenv($name);
+            }
+            else if(isset($this->config[$name]))
+            {
+                $config[$name] = $this->config[$name];
+            }
+            else
+            {
+                $config[$name] = $default;
+            }
+        }
+
+        // All other configuration
         foreach($this->config as $name => $value)
         {
             if(!isset($config[$name]))
