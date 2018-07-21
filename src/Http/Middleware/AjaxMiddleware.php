@@ -11,7 +11,6 @@
 
 namespace Luthier\Http\Middleware;
 
-use Luthier\Framework;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
@@ -25,10 +24,9 @@ class AjaxMiddleware implements MiddlewareInterface
     {
         if(!$request->isAjax())
         {
-            throw new NotFoundHttpException(
-                Framework::container('APP_ENV') == 'development'
-                    ? 'This route is only available under AJAX requests'
-                    : 'Not found');
+            throw new NotFoundHttpException('This route is only available under AJAX requests');
         }
+        
+        $next($request, $response);
     }
 }
