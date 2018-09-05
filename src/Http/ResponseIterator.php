@@ -18,10 +18,6 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
  * Iterates over the given middleware stack and finally executes the route
  * controller/closure callback. 
  * 
- * Please note that this class is used by the built-in Luthier Framework
- * Request Handler ('request_handler' service), if you use a custom request 
- * handler this class probably may not be compatible.
- * 
  * @author Anderson Salas <anderson@ingenia.me>
  */
 class ResponseIterator
@@ -32,39 +28,51 @@ class ResponseIterator
     private static $index;
 
     /**
-     * Stack of request middleware
-     * 
      * @var array
      */
     private static $stack;
 
     /**
-     * Array with the callback/arguments of the matched route (the final response)
-     * 
      * @var array
      */
     private static $callback;
-
+    
+    /**
+     * @var \Closure
+     */
+    private static $router;
+    
+    /**
+     * @param string|callable $middleware
+     * 
+     * @return \Closure
+     */
+    private static function getMiddleware($middleware)
+    {
+        return self::$router->getMiddleware($middleware);   
+    }
+    
     /**
      * Iterates over the provided request stack
      * 
      * @param array      $stack      Request stack
      * @param callable   $callback   Route callback
      * @param array      $arguments  Route arguments
-     * @param Request    $request    Luthier request object
-     * @param Response   $response   Luthier response object
+     * @param Request    $request    Luthier request
+     * @param Response   $response   Luthier response
      * 
      * @return \Symfony\Component\HttpFoundation\Response|mixed
      */
-    public static function handle(array $stack, callable $callback, array $arguments, Request $request, Response $response)
+    public static function handle(RouteBuilder $router, array $stack, callable $callback, array $arguments, Request $request, Response $response)
     {
+        self::$router   = $router;
+        self::$index    = 0;
+        self::$stack    = $stack;
+        self::$callback = [$callback, $arguments];   
+        
         if(count($stack) > 0)
-        {
-            self::$index = 0;
-            self::$stack = $stack;
-            self::$callback = [$callback, $arguments];   
-            
-            $middleware = RouteBuilder::getMiddleware(self::$stack[0]);
+        {      
+            $middleware = self::getMiddleware(self::$stack[0]);
             
             Response::getRealResponse($middleware($request, $response, function($request, $response){
                 return \Luthier\Http\ResponseIterator::next($request, $response);
@@ -114,7 +122,7 @@ class ResponseIterator
         }
         else
         {
-            $middleware = RouteBuilder::getMiddleware($middleware);
+            $middleware = self::getMiddleware($middleware);
             return $middleware($request, $response, function($request,$response){
                 return \Luthier\Http\ResponseIterator::next($request, $response);
             });

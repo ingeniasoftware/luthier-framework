@@ -10,9 +10,8 @@
  */
 
 namespace Luthier\Events;
-
-use Luthier\Http\Request; 
-use Luthier\Http\Response;   
+ 
+use Psr\Container\ContainerInterface;
 use Symfony\Component\EventDispatcher\Event;
 
 /**
@@ -24,38 +23,39 @@ use Symfony\Component\EventDispatcher\Event;
 class RequestEvent extends Event
 {
     /**
-     * @var \Luthier\Http\Request
+     * @var ContainerInterface
      */
-    private $request;
+    private $container;
 
     /**
-     * @var \Luthier\Http\Response
+     * @param ContainerInterface $container
      */
-    private $router;
-
-    /**
-     * @param Request $request
-     * @param Response $response
-     */
-    public function __construct(Request $request, Response $response)
+    public function __construct(ContainerInterface $container)
     {
-        $this->request = $request;
-        $this->response = $response;
+        $this->container = $container;
     }
 
     /**
-     * @return \Luthier\Http\Request
+     * @return \Luthier\Http\RequestInterface;
      */
     public function getRequest()
     {
-        return $this->request;
+        return $this->container->get('request');
     }
     
     /**
-     * @return \Luthier\Http\Response
+     * @return \Luthier\Http\ResponseInterface;
      */
     public function getResponse()
     {
-        return $this->response;
+        return $this->container->get('response');
+    }
+    
+    /**
+     * @return ContainerInterface
+     */
+    public function getContainer()
+    {
+        return $this->container;
     }
 }

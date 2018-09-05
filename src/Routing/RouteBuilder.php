@@ -12,8 +12,6 @@
 namespace Luthier\Routing;
 
 use Psr\Container\ContainerInterface;
-use Luthier\Http\Request;
-use Luthier\Http\Response;
 use Luthier\Http\Middleware\AjaxMiddleware;
 use Luthier\Http\Middleware\MiddlewareInterface;
 use Luthier\Routing\Route as LuthierRoute;
@@ -23,30 +21,31 @@ use Symfony\Component\Routing\RouteCollection;
 use Symfony\Component\Routing\RequestContext;
 use Symfony\Component\Routing\Generator\UrlGenerator;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
-use Symfony\Component\HttpFoundation\Response as SfResponse;
-use function Whoops\Util\ob_start;
+
 
 /**
- * Abstraction of the Symfony Router component. Contains methods to defining routes,
- * for example:
- *   * get()
- *   * post()
- *   * patch()
- *   * put()
- *   * options()
- *   * trace()
- *   * head()
- *   * delete()
+ * Abstraction of the Symfony Router component. Contains methods to define new routes
+ *   * get
+ *   * post
+ *   * patch
+ *   * put
+ *   * options
+ *   * trace
+ *   * head
+ *   * delete
  *   
  * Multiple HTTP Verbs can be accepted in a route by using the match([]) method
  * 
  * The Route Builder also stores the callbacks what will be invoked when an application
  * error/exception occurs.
  * 
+ * At application run, all routes will be compiled to Symfony Route objects when the Request Handler
+ * calls the getRoutes() method.
+ * 
  * @author Anderson Salas <anderson@ingenia.me>
  */
-class RouteBuilder
-{
+class RouteBuilder implements RouteBuilderInterface
+{    
     const HTTP_VERBS = ['GET','POST','PUT','PATCH','DELETE','HEAD','OPTIONS','TRACE'];
 
     /**
@@ -86,12 +85,7 @@ class RouteBuilder
      * @var array $names
      */
     protected $names = [];
-    
-    /**
-     * @var Route $currentRoute
-     */
-    protected $currentRoute = null;
-    
+        
     /**
      * @var RouteCollection $routeCollection
      */
@@ -127,57 +121,20 @@ class RouteBuilder
      * @var callable $errorCallback
      */
     protected $errorCallback;
+    
+    /**
+     * @var \Luthier\Routing\Route
+     */
+    protected $currentRoute;
 
     public function __construct(ContainerInterface $container)
     {
-        $this->container = $container;
+        $this->container = $container; 
         $this->routeCollection = new RouteCollection();
-        $this->requestContext  = new RequestContext();
+        $this->requestContext  = new RequestContext();   
         $this->middleware('ajax', AjaxMiddleware::class);
-        
-        // Default HTTP "Not found" error callback
-        $this->httpNotFoundCallback = \Closure::bind(function(Request $request, Response $response, \Exception $exception)
-        {
-            if($this->get('APP_ENV') == 'development')
-            {
-                throw $exception;
-            }
-            
-            \ob_start();
-            require __DIR__ . '/../Resources/Views/HttpNotFoundError.php';
-            $notFoundResponse = \ob_get_clean();
-            return new SfResponse($notFoundResponse, 404);
-        }, $container, ContainerInterface::class);
-        
-        // Default HTTP "Method not allowed" error callback
-        $this->httpMethodNotAllowedCallback = \Closure::bind(function(Request $request, Response $response, ?LuthierRoute $route, \Exception $exception)
-        {
-            if($this->get('APP_ENV') == 'development')
-            {
-                throw $exception;
-            }
-            
-            \ob_start();
-            require __DIR__ . '/../Resources/Views/HttpNotAllowedError.php';
-            $methodNotAllowedResponse = \ob_get_clean();
-            return new SfResponse($methodNotAllowedResponse, 405);
-        }, $container, ContainerInterface::class);
-        
-        // Default error/exception callback
-        $this->errorCallback = \Closure::bind(function(Request $request, Response $response, ?LuthierRoute $route, \Exception $exception)
-        {
-            if($this->get('APP_ENV') == 'development')
-            {
-                throw $exception;
-            }
-
-            \ob_start();
-            require __DIR__ . '/../Resources/Views/Error.php';
-            $methodNotAllowedResponse = \ob_get_clean();
-            return new SfResponse($methodNotAllowedResponse, 500);
-        }, $container, ContainerInterface::class);
     }
-
+    
     public function __call($callback, array $attributes)
     {
         if($callback == 'command')
@@ -200,10 +157,6 @@ class RouteBuilder
         }
         else if(in_array(strtoupper($callback), self::HTTP_VERBS) || in_array($callback, ['match']))
         {
-            if($this->currentRoute !== NULL)
-            {
-                throw new \Exception("You may not define more routes after the first route has been dispatched");
-            }
 
             if($callback == 'match')
             {
@@ -241,6 +194,7 @@ class RouteBuilder
      * @param string $prefix     Group URL prefix
      * @param mixed  $attributes Group shared attributes
      * @param mixed  $routes     Group sub-routes definition callback
+     * 
      * @throws \Exception
      * 
      * @return void
@@ -314,20 +268,22 @@ class RouteBuilder
     /**
      * Defines (or runs) a global middleware 
      * 
-     * The following syntaxes are accepted:
+     * The following syntax is accepted:
      * 
      *   // Defining a global middlware
      *   
-     *   # Closure
+     *   # Closure:
      *   $app->middleware('alias', function(Request $request, Response $response, Closure $next){ ... });
-     *   # Callable
+     *   
+     *   # Callable:
      *   $app->middleware('alias', 'middleware_callable');
      *   
      *   // Runing a global middleware
      *   
-     *   # From alias
+     *   # From alias:
      *   $app->middleware('alias');
-     *   # From a closure
+     *   
+     *   # From a closure:
      *   $app->middleware(function(Request $request, Response $response, Closure $next){ ... });
      *   
      * You can also pass an array of middleware closures/alias to be executed:
@@ -376,17 +332,15 @@ class RouteBuilder
     }
     
     /**
-     * Returns all Luthier Routes compiled to a Symfony RouteCollection object 
+     * {@inheritDoc}
      * 
-     * @throws \Exception
-     * 
-     * @return \Symfony\Component\Routing\RouteCollection
+     * @see \Luthier\Routing\RouteBuilderInterface::getRoutes()
      */
-    public function getRoutes()
+    public function getRoutes() : RouteCollection
     {
-        foreach($this->routes as $i => $route)
+        foreach($this->routes as $i => $luthierRoute)
         {
-            [$name, $route] = $route->compile();
+            [$name, $route] = $luthierRoute->compile();
 
             if(empty($name))
             {
@@ -398,7 +352,7 @@ class RouteBuilder
                 {
                     throw new \Exception("Duplicated '$name' route");
                 }
-                $this->names[$name] = $route->getStickyParams();
+                $this->names[$name] = $luthierRoute->getStickyParams();
             }
             
             $this->routeCollection->add($name, $route);
@@ -416,7 +370,7 @@ class RouteBuilder
      */
     public function getCommands()
     {
-        return $this->commands();
+        return $this->commands;
     }
 
     /**
@@ -432,16 +386,11 @@ class RouteBuilder
     }
     
     /**
-     * Gets a route URL by its name, or throws an exception if an undefined route was requested
+     * {@inheritDoc}
      * 
-     * @param string $name        Route name
-     * @param array  $args        Route parameters (if any)
-     * @param bool   $absoluteUrl Build an absolute url
-     * @throws \Exception
-     * 
-     * @return string
+     * @see \Luthier\Routing\RouteBuilderInterface::getRouteByName()
      */
-    public function getRouteByName(string $name, array $args = [], bool $absoluteUrl = TRUE)
+    public function getRouteByName(string $name, array $args = [], bool $absoluteUrl = true) : string
     {
         $route = $this->currentRoute;
 
@@ -474,7 +423,7 @@ class RouteBuilder
     {
         return $this->requestContext;
     }
-
+    
     /**
      * Returns a valid middleware callable from the given parameter
      * 
@@ -483,10 +432,16 @@ class RouteBuilder
      * 
      * @return callable
      */
-    public static function getMiddleware($middleware) : callable
+    public function getMiddleware($middleware)
     {
         if(is_callable($middleware))
         {
+            if($middleware instanceof \Closure)
+            {
+                $container = $this->container;
+                $middleware = \Closure::bind($middleware, $container, ContainerInterface::class);    
+            }
+            
             return $middleware;
         }
 
@@ -499,7 +454,7 @@ class RouteBuilder
 
             if(class_exists($middleware))
             {
-                $middleware = new $middleware();
+                $middleware = new $middleware($this->container);
             }
             else
             {
@@ -517,7 +472,17 @@ class RouteBuilder
             return $middleware->run($request, $response, $next);
         };
     }
-
+    
+    /**
+     * @param \Closure $callback
+     * 
+     * @return \Closure
+     */
+    private function bindContainer(\Closure $callback)
+    {
+        return \Closure::bind($callback, $this->container, ContainerInterface::class);   
+    }
+    
     /**
      * Sets the callback to be invoked when a HTTP 404 error occurs
      * 
@@ -525,9 +490,9 @@ class RouteBuilder
      * 
      * @return \Luthier\Routing\RouteBuilder
      */
-    public function setHttpNotFoundCallback(callable $callback)
+    public function setHttpNotFoundCallback(\Closure $callback)
     {
-        $this->httpNotFoundCallback = $callback;       
+        $this->httpNotFoundCallback = $this->bindContainer($callback);       
         return $this;
     }
 
@@ -538,9 +503,9 @@ class RouteBuilder
      * 
      * @return \Luthier\Routing\RouteBuilder
      */
-    public function setMethodHttpNotAllowedCallback(callable $callback)
+    public function setMethodHttpNotAllowedCallback(\Closure $callback)
     {
-        $this->httpMethodNotAllowedCallback = $callback;
+        $this->httpMethodNotAllowedCallback = $this->bindContainer($callback); 
         return $this;
     }
 
@@ -549,18 +514,29 @@ class RouteBuilder
      * 
      * @param callable $callback
      * 
-     * @return \Luthier\Routing\RouteBuilder
+     * @return self
      */
-    public function setErrorCallback(callable $callback)
+    public function setErrorCallback(\Closure $callback)
     {
-        $this->errorCallback = $callback;
+        $this->errorCallback = $this->bindContainer($callback); 
+        return $this;
+    }
+    
+    /**
+     * @param LuthierRoute $route
+     * 
+     * @return self
+     */
+    public function setCurrentRoute(LuthierRoute $route)
+    {
+        $this->currentRoute = $route;
         return $this;
     }
     
     /**
      * Gets the httpNotFoundCallback property
      * 
-     * @return callable
+     * @return callable|null
      */
     public function getHttpNotFoundCallback()
     {
@@ -570,7 +546,7 @@ class RouteBuilder
     /**
      * Gets the httpMethodNotAllowedCallback property
      *
-     * @return callable
+     * @return callable|null
      */
     public function getHttpMethodNotAllowedCallback()
     {
@@ -580,7 +556,7 @@ class RouteBuilder
     /**
      * Gets the errorCallback property
      *
-     * @return callable
+     * @return callable|null
      */
     public function getErrorCallback()
     {
@@ -597,28 +573,6 @@ class RouteBuilder
         $routeMiddleware  = $route->getMiddleware() ?? [];
         $globalMiddleware = self::$context['middleware']['global'];
         return array_merge($routeMiddleware,$globalMiddleware);
-    }
-    
-    /**
-     * Gets the Luthier welcome screen 
-     * 
-     * (This screen is displayed when no routes are defined in the application
-     * as default response)
-     * 
-     * @param string $message
-     * @return \Symfony\Component\HttpFoundation\Response 
-     */
-    public function getWelcomeScreenResponse(string $message = null)
-    {
-        if($this->container->get('APP_ENV') == 'production')
-        {
-            throw new \Symfony\Component\HttpKernel\Exception\NotFoundHttpException();
-        }
-        
-        \ob_start();
-        require __DIR__ . '/../Resources/Views/About.php';
-        $methodNotAllowedResponse = \ob_get_clean();
-        return new SfResponse($methodNotAllowedResponse);
     }
     
     /**

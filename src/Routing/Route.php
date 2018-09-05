@@ -14,8 +14,8 @@ namespace Luthier\Routing;
 use Symfony\Component\Routing\Route as SfRoute;
 
 /**
- * Route representation. All routes are compiled to Symfony routes when the application runs, 
- * calling the compile() method on each of them.
+ * Abstract representation of a Route. The most important here 
+ * is the compile() method, which returns the actual Symfony Route object.
  * 
  * @author Anderson Salas <anderson@ingenia.me>
  */

@@ -15,12 +15,10 @@ use Symfony\Component\Dotenv\Dotenv;
 use Symfony\Component\Dotenv\Exception\PathException;
 
 /**
- * Handles the configuration of the application
+ * Represents the configuration of a Luthier Framework application.
  *
- * Luthier Framework applications can be configured via .env files and configuration
- * arrays, so this class checks which of them are provided and returns the actual
- * configuration. Also checks if there are missing configuration parameters and warns to
- * the user.
+ * Applications can be configured via .env files and with arrays, so this class checks
+ * which of them are provided and returns the actual configuration.
  *
  * @author Anderson Salas <anderson@ingenia.me>
  */
@@ -39,29 +37,38 @@ class Configuration
     /**
      * The default application configuration
      *
-     * This array is used during the application startup for check if there are missing
-     * configuration items. If no configuration are provided to the application, this
-     * will be used.
-     *
      * @var array
      */
     protected static $defaultConfig = [
+        // General configuration
         'APP_ENV'   => 'development',
         'APP_NAME'  => 'Luthier',
-        'APP_INDEX' => null,
+        'APP_URL'   => null,
+        'APP_LOG'   => null,
         'APP_CACHE' => null,
+        'APP_PATH'  => null,
+        // Database configuration
+        'DB_TYPE'   => 'mysql',
+        'DB_HOST'   => 'localhost',
+        'DB_USER'   => 'root',
+        'DB_PASS'   => null,
+        'DB_NAME'   => null,
+        'DB_MDNS'   => null,
+        // Template configuration
+        'TEMPLATE_DRIVER' => 'default',
+        'TEMPLATE_DIR'    => null,
     ];
 
     /**
      * @param  array   $config     Application configuration array
      * @param  string  $envFolder  Application .env file path
      */
-    public function __construct(array $config = [], string $envFolder = null)
+    public function __construct(?array $config = [], ?string $envFolder = null)
     {
-        $this->config    = $config;
+        $this->config    = $config ?? [];
         $this->envFolder = $envFolder;
     }
-
+        
     /**
      * Parses the provided application configuration
      *
@@ -99,7 +106,10 @@ class Configuration
         {
             if($this->envFolder !== NULL && getenv($name) !== FALSE)
             {
-                $config[$name] = getenv($name);
+                // Empty strings are considered NULL
+                $config[$name] = !empty(getenv($name)) 
+                    ? getEnv($name)
+                    : null;
             }
             else if(isset($this->config[$name]))
             {
@@ -123,8 +133,49 @@ class Configuration
         return $config;
     }
     
+    /**
+     * @return array
+     */
     public static function getDefaultConfig()
     {
         return self::$defaultConfig;
+    }
+    
+    /**
+     * @return array
+     */
+    public function getConfig()
+    {
+        return $this->config;
+    }
+    
+    /**
+     * @return string
+     */
+    public function getEnvFolder()
+    {
+        return $this->envFolder;
+    }
+    
+    /**
+     * @param array $config
+     *
+     * @return self
+     */
+    public function setConfig(array $config)
+    {
+        $this->config = $config;
+        return $this;
+    }
+    
+    /**
+     * @param string $envFolder
+     *
+     * @return self
+     */
+    public function setEnvFolder(string $envFolder)
+    {
+        $this->envFolder = $envFolder;
+        return $this;
     }
 }

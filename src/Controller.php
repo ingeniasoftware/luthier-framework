@@ -17,7 +17,7 @@ use Luthier\Http\Request;
 use Luthier\Http\Response;
 
 /**
- * Simple wrapper of the application dependency container, that will be provided
+ * Simple Controller implementation. The dependency container will be provided
  * by the request handler during the route match
  *
  * @author Anderson Salas <anderson@ingenia.me>
@@ -45,45 +45,22 @@ class Controller
     protected $route;
     
     /**
+     * Controller init
+     * 
+     * (This method is called automatically by the Request Handler service
+     * 
      * @param ContainerInterface $container
-     * 
-     * @return self
-     */
-    public function setContainer(ContainerInterface $container = null)
-    {
-        $this->container = $container;
-        return $this;
-    }
-    
-    /**
      * @param Request $request
-     * 
-     * @return self
-     */
-    public function setRequest(Request $request)
-    {
-        $this->request = $request;
-        return $this;
-    }
-    
-    /**
      * @param Response $response
-     * 
-     * @return self
-     */
-    public function setResponse(Response $response)
-    {
-        $this->response = $response;
-        return $this;
-    }
-    
-    /**
      * @param Route $route
      * 
      * @return self
      */
-    public function setRoute(Route $route)
+    public function setController(ContainerInterface $container, Request $request, Response $response, Route $route)
     {
+        $this->container = $container;
+        $this->request = $request;
+        $this->response = $response;
         $this->route = $route;
         return $this;
     }
@@ -98,14 +75,10 @@ class Controller
      * @return mixed
      */
     public function __get($property)
-    {
+    {        
         if($this->container->has($property))
         {
             return $this->container->get($property);
-        }
-        else if($property == 'route')
-        {
-            return $this->container->get("router")->getCurrentRoute();
         }
         else
         {

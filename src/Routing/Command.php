@@ -16,7 +16,7 @@ use Symfony\Component\Console\Input\{InputInterface, InputDefinition, InputOptio
 use Symfony\Component\Console\Output\OutputInterface;
 
 /**
- * An application command
+ * Abstract representation of an application command.
  * 
  * @author Anderson Salas <anderson@ingenia.me>
  */

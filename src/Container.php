@@ -15,18 +15,15 @@ use Pimple\Container as PimpleContainer;
 use Pimple\Psr11\ServiceLocator;
 
 /**
- * Facade of Pimple dependency injection container used by Luthier Framework
+ * Pimple abstraction layer used by Luthier Framework
  *
- * This class contains methods for adding elements (services, properties and factories) to
+ * Defines methods for adding elements (services, properties and factories) to
  * the container:
  *
  *   * service()
  *   * parameter()
  *   * factory()
- *
- * The get() and has() methods retrieves and checks for the existence of
- * a element inside the container.
- *
+ *    
  * @author Anderson Salas <anderson@ingenia.me>
  */
 class Container
@@ -39,71 +36,33 @@ class Container
     /**
      * @var array
      */
-    protected $parameters = [];
+    protected $publicAliases = [];
     
     /**
      * @var array
      */
-    protected $services = [];
+    protected $privateAliases = [];
         
     /**
-     * The default container
+     * Gets the default container
      *
      * @var array
      */
     protected static $defaultContainer = [
-        'router'          => \Luthier\Routing\RouteBuilder::class,
-        'request_handler' => \Luthier\Http\RequestHandler::class,
-        'dispatcher'      => \Symfony\Component\EventDispatcher\EventDispatcher::class,
+        //(name)          => [ (type),  (class), (serviceLocatorAliases) ]
+        'router'          => ['service', \Luthier\Routing\RouteBuilder::class, []],
+        'request_handler' => ['service', \Luthier\Http\RequestHandler::class, ['PRIVATE_SERVICES']],
+        'dispatcher'      => ['service', \Symfony\Component\EventDispatcher\EventDispatcher::class, []],
+        'request'         => ['service', \Luthier\Http\Request::class, []],
+        'response'        => ['service', \Luthier\Http\Response::class, []],
+        'logger'          => ['service', \Luthier\Logger::class, []],
+        'database'        => ['service', \Luthier\Database\Connection::class, []],
+        'template'        => ['service', \Luthier\Templating\Template::class, []],
     ];
     
     public function __construct()
     {
         $this->container = new PimpleContainer();
-    }
-    
-    /**
-     * __get() magic method
-     *
-     * @param string $service  The service/parameter/factory name to be fetched
-     *
-     * @return mixed
-     */
-    public function __get($service)
-    {
-        return $this->get($service);
-    }
-        
-    /**
-     * Gets a service callback from a string (in this case, a fully qualified class name)
-     * 
-     * @param string $name The service class name
-     * 
-     * @throws \InvalidArgumentException
-     */
-    private function getServiceCallback(string $service)
-    {
-        if(!class_exists($service))
-        {
-            throw new \InvalidArgumentException("Unable to register a new service: the class $service does not exists");
-        }
-        
-        $container = $this->container;
-        
-        return function($container) use($service)
-        {
-            $defaultAliases = array_merge(
-                array_keys(Configuration::getDefaultConfig()), array_keys(self::getDefaultContainer())
-            );
-            $userAliases = array_merge($this->services, $this->parameters);
-            
-            return new $service(
-                new ServiceLocator(
-                    $container,
-                    array_unique(array_merge($defaultAliases,$userAliases))
-                    )
-                );
-        };
     }
     
     /**
@@ -115,25 +74,95 @@ class Container
     {
         return self::$defaultContainer;
     }
+            
+    /**
+     * Gets a service callback from a string (in this case, a fully qualified class name)
+     * 
+     * @param string $name The service class name
+     */
+    private function getServiceCallback(string $service, array $locatorAliases = [])
+    {        
+        $locatorAliases = array_merge(
+            array_keys(Configuration::getDefaultConfig()),
+            array_keys(self::getDefaultContainer()),
+            $locatorAliases,
+            $this->publicAliases
+        );
+                
+        return function($container) use($service, $locatorAliases)
+        {               
+            return new $service(new ServiceLocator($container,$locatorAliases));
+        };
+    }
     
     /**
+     * Determines if a service is public or private based on the provided
+     * name
+     *  
+     * @param string $name
+     * @param mixed  $class
+     * @param bool   $isPublic
+     */
+    private function parseItem(&$name, $class, &$isPublic)
+    {
+        if(substr($name,0,1) == '.')
+        {
+            $name = substr($name,1);
+            $isPublic = false;
+        }
+        
+        if($isPublic && !in_array($name, $this->publicAliases))
+        {
+            $this->publicAliases[] = $name;
+        }
+        else
+        {
+            if($class !== null && is_string($class))
+            {
+                $this->privateAliases[]  = [$name, $class];
+            }
+        }
+    }
+
+    /**
      * Registers a new service in the container
-     *
-     * @param  string           $name     Service name
-     * @param  callable|string  $service  Service callback
+     * 
+     * @param  string           $name            Service name
+     * @param  callable|string  $service         Service callback
+     * @param  array            $locatorAliases  Array of service aliases of the service locator
+     * @param  bool             $isPublic        Set the service as public (will be available globally in the application)
      *
      * @return self
      */
-    public function service(string $name, $service)
+    public function service(string $name, $service, array $locatorAliases = [], bool $isPublic = true)
     {       
+        $this->parseItem($name, $service, $isPublic);
+        
         $this->container[$name] = is_string($service) 
-            ? $this->getServiceCallback($service)
+            ? $this->getServiceCallback($service, $locatorAliases)
             : $service;
-
-        if(!in_array($name, $this->services))
-        {
-            $this->services[] = $name;
-        }
+        
+        return $this;
+    }
+    
+    /**
+     * Registers a new factory in the container
+     *
+     * @param  string           $name            Factory name
+     * @param  string|callable  $factory         Factory callback
+     * @param  array            $locatorAliases  Array of service aliases of the service locator
+     *
+     * @return self
+     */
+    public function factory(string $name, $factory, array $locatorAliases = [])
+    {  
+        $this->parseItem($name, $factory);
+        
+        $this->container[$name] = $this->container->factory(
+            is_string($factory)
+                ? $this->getServiceCallback($factory, $locatorAliases)
+                : $factory
+            );
         
         return $this;
     }
@@ -141,7 +170,7 @@ class Container
     /**
      * Registers a new parameter in the container
      *
-     * All parameter names will be converted to UPPERCASE
+     * All parameter are PUBLIC and their names will be converted to UPPERCASE
      *
      * @param  string  $name     Parameter name
      * @param  mixed   $value    Parameter value
@@ -150,83 +179,57 @@ class Container
      * @return self
      */
     public function parameter(string $name, $value)
-    {
+    {        
         $name = strtoupper($name);
+        
+        if(!in_array($name, $this->publicAliases))
+        {
+            $this->publicAliases[] = $name;
+        }
         
         $this->container[$name] = is_callable($value)
             ? $this->container->protect($value)
             : $value;
-               
-        if(!in_array($name, $this->parameters))
-        {
-            $this->parameters[] = $name;
-        }
         
         return $this;
-    }
-    
-    /**
-     * Registers a new factory in the container
-     *
-     * @param  string           $name     Factory name
-     * @param  string|callable  $factory  Factory callback
-     *
-     * @return self
-     */
-    public function factory(string $name, $factory)
-    {        
-        $this->container[$name] = is_string($factory)
-            ? $this->getServiceCallback($factory)
-            : $service;
-                
-        if(!in_array($name, $this->services))
-        {
-            $this->services[] = $name;
-        }
-        
-        return $this;
-    }
-    
-    /**
-     * Get a service/parameter from the container
-     *
-     * @param  string $name
-     *
-     * @return mixed
-     *
-     * @access public
-     */
-    public function get(string $name)
-    {
-        if($this->has($name))
-        {
-            return $this->container[$name];
-        }
-        else 
-        {
-            throw new \Exception("The '$name' service/parameter is not defined in the container");
-        }    
-    }
-    
-    /**
-     * Check if the container has a specific service/parameter
-     *
-     * @param  string $name
-     *
-     * @return bool
-     *
-     * @access public
-     */
-    public function has(string $name)
-    {
-        return isset($this->container[$name]);
     }
     
     /**
      * @return array
      */
-    public function getServices()
+    public function getPrivateAliases()
     {
-        return $this->services;  
+        return $this->privateAliases;
+    }
+      
+    /**
+     * Gets a service/parameter from the container by its id
+     *
+     * @param  string $id
+     *
+     * @return mixed
+     */
+    public function get($id)
+    {
+        if($this->has($id))
+        {
+            return $this->container[$id];
+        }
+        else
+        {
+            throw new \Exception("The '$id' service/parameter is not defined in the container");
+        }
+    }
+    
+    /**
+     * Checks the existence of the provided service/parameter id
+     *
+     * @param  string $id
+     *
+     * @return bool
+     */
+    public function has($id)
+    {
+        return isset($this->container[$id]);
     }
 }

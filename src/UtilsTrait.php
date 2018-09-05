@@ -11,6 +11,10 @@
 
 namespace Luthier;
 
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\JsonResponse;
+
 /**
  * Various helper methods used across the framework
  * 
@@ -26,5 +30,20 @@ trait UtilsTrait
     public function isCli()
     {
         return (PHP_SAPI === 'cli' OR defined('STDIN'));
+    }
+    
+    public function errorResponse(Request $request, int $status = 500, string $title = 'Ups!', string $message = 'Something went wrong')
+    {
+        if($request->isXmlHttpRequest())
+        {
+            return new JsonResponse([$title => $message], $status);
+        }
+        else
+        {
+            ob_start();
+            require __DIR__ . '/Resources/Views/Error.php';
+            $responseBody = ob_get_clean();
+            return new Response($responseBody, $status);
+        }  
     }
 }

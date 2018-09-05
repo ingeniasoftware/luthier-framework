@@ -11,8 +11,7 @@
 
 namespace Luthier\Events;
 
-use Luthier\Http\Request;
-use Luthier\Http\Response;   
+use Psr\Container\ContainerInterface;
 use Symfony\Component\EventDispatcher\Event;
 
 /**
@@ -23,14 +22,9 @@ use Symfony\Component\EventDispatcher\Event;
 class PreControllerEvent extends Event
 {
     /**
-     * @var \Luthier\Http\Request
+     * @var ContainerInterface
      */
-    private $request;
-
-    /**
-     * @var \Luthier\Http\Response;
-     */
-    private $response;
+    private $container;
     
     /**
      * @var array
@@ -48,16 +42,14 @@ class PreControllerEvent extends Event
     private $arguments;
     
     /**
-     * @param Request $request
-     * @param Response $response
-     * @param array $middlewareStack
-     * @param callable $callback
-     * @param array $arguments
+     * @param ContainerInterface  $container
+     * @param array               $middlewareStack
+     * @param callable            $callback
+     * @param array               $arguments
      */
-    public function __construct(Request $request, Response $response, array &$middlewareStack, callable &$callback, array &$arguments)
+    public function __construct(ContainerInterface $container, array &$middlewareStack, callable &$callback, array &$arguments)
     {
-        $this->response = $response;
-        $this->request = $request;
+        $this->container = $container;
         $this->middlewareStack = &$middlewareStack;
         $this->callback = &$callback;
         $this->arguments = &$arguments;
@@ -68,7 +60,7 @@ class PreControllerEvent extends Event
      */
     public function getRequest()
     {
-        return $this->request;
+        return $this->container->get('request');
     }
 
     /**
@@ -76,7 +68,15 @@ class PreControllerEvent extends Event
      */
     public function getResponse()
     {
-        return $this->response;
+        return $this->container->get('response');
+    }
+    
+    /**
+     * @return ContainerInterface
+     */
+    public function getContainer()
+    {
+        return $this->container;
     }
 
     /**
