@@ -11,5 +11,4 @@ namespace Luthier\Routing\Exception;
 
 class RouteNotFoundException extends \Exception
 {
-
 }

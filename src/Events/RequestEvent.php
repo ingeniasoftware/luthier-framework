@@ -10,7 +10,7 @@
  */
 
 namespace Luthier\Events;
- 
+
 use Psr\Container\ContainerInterface;
 use Symfony\Component\EventDispatcher\Event;
 
@@ -22,6 +22,7 @@ use Symfony\Component\EventDispatcher\Event;
  */
 class RequestEvent extends Event
 {
+
     /**
      * @var ContainerInterface
      */
@@ -42,7 +43,7 @@ class RequestEvent extends Event
     {
         return $this->container->get('request');
     }
-    
+
     /**
      * @return \Luthier\Http\ResponseInterface;
      */
@@ -50,7 +51,7 @@ class RequestEvent extends Event
     {
         return $this->container->get('response');
     }
-    
+
     /**
      * @return ContainerInterface
      */

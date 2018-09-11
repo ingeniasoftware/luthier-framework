@@ -18,11 +18,10 @@
  */
 function route(?string $name = null, array $args = [], bool $absoluteUrl = true)
 {
-    if($name === null)
-    {
+    if ($name === null) {
         return \Luthier\Framework::$request->getRequest()->attributes->get('_orig_route');
     }
-    
+
     return \Luthier\Framework::$router->getRouteByName($name, $args, $absoluteUrl);
 }
 
@@ -59,10 +58,10 @@ function redirect(string $url = '', int $status = 302, array $headers = [])
  * Sets the current response as a RedirectResponse to the URL of the given
  * route name
  * 
- * @param string  $name
- * @param array   $params
- * @param number  $status
- * @param array   $headers
+ * @param string $name
+ * @param array  $params
+ * @param number $status
+ * @param array  $headers
  * 
  * @return void
  */
@@ -74,9 +73,9 @@ function route_redirect($name, $params = [], $status = 302, $headers = [])
 /**
  * Sets the current response as a JsonResponse with the given array of data
  * 
- * @param array   $data
- * @param number  $status
- * @param array   $headers
+ * @param array  $data
+ * @param number $status
+ * @param array  $headers
  * 
  * @return void
  */
@@ -96,5 +95,5 @@ function json_response(array $data, $status = 200, $headers = [])
  */
 function view(string $template, array $vars = [], $return = false)
 {
-    return \Luthier\Framework::$template->render($template, $vars, $return);  
+    return \Luthier\Framework::$template->render($template, $vars, $return);
 }

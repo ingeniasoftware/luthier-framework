@@ -18,13 +18,14 @@ use Symfony\Component\Routing\RouteCollection;
  */
 interface RouteBuilderInterface
 {
+
     /**
      * Returns all routes compiled to a Symfony RouteCollection object
      * 
      * @return RouteCollection
      */
-    public function getRoutes() : RouteCollection; 
-    
+    public function getRoutes(): RouteCollection;
+
     /**
      * Gets a route URL by its name, or throws an exception if an undefined route was requested
      * 
@@ -35,5 +36,5 @@ interface RouteBuilderInterface
      * 
      * @return string
      */
-    public function getRouteByName(string $name, array $args = [], bool $absoluteUrl = true) : string;
+    public function getRouteByName(string $name, array $args = [], bool $absoluteUrl = true): string;
 }

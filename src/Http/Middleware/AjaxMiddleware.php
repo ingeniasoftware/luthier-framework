@@ -20,13 +20,13 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
  */
 class AjaxMiddleware implements MiddlewareInterface
 {
+
     public function run($request, $response, $next)
     {
-        if(!$request->isAjax())
-        {
+        if (! $request->isAjax()) {
             throw new NotFoundHttpException('This route is only available under AJAX requests');
         }
-        
+
         $next($request, $response);
     }
 }

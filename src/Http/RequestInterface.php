@@ -21,18 +21,19 @@ use Symfony\Component\HttpFoundation\Request;
  */
 interface RequestInterface
 {
+
     /**
      * Gets the Symfony Request
      */
     public function getRequest();
-    
+
     /**
      * Sets the Symfony Request
      * 
      * @param Request $request
      */
     public function setRequest(Request $request);
-    
+
     /**
      * Gets the application base url
      * 
@@ -40,5 +41,5 @@ interface RequestInterface
      * 
      * @return string
      */
-    public function baseUrl(string $url = '') : string;
+    public function baseUrl(string $url = ''): string;
 }

@@ -13,43 +13,40 @@ namespace Luthier\Templating\Driver;
 
 use Psr\Container\ContainerInterface;
 
-class TwigDriver implements TemplateDriverInterface 
+class TwigDriver implements TemplateDriverInterface
 {
+
     /**
      * @var ContainerInterface
      */
     protected $container;
-      
+
     /**
      * @var \Twig_Loader_Filesystem
      */
     protected $loader;
-    
+
     /**
      * @var \Twig_Environment
      */
     protected $twig;
-        
+
     /**
      * @param ContainerInterface $container
      */
     public function __construct(ContainerInterface $container)
     {
         $this->container = $container;
-        
-        $this->loader = new \Twig_Loader_Filesystem([
-            $container->get('APP_PATH') . '/' . $container->get('TEMPLATE_DIR')
-        ]);
-                
-        $config['cache'] = !empty($container->get('APP_CACHE'))
-            ? $container->get('APP_PATH') . '/' . $container->get('APP_CACHE') . '/templates'
-            : false;
 
+        $this->loader = new \Twig_Loader_Filesystem([$container->get('APP_PATH') . '/' . $container->get('TEMPLATE_DIR')]);
+
+        $config = [];
+        $config['cache'] = ! empty($container->get('APP_CACHE')) ? $container->get('APP_PATH') . '/' . $container->get('APP_CACHE') . '/templates' : false;
         $config['debug'] = $container->get('APP_ENV') === 'development';
-            
+
         $this->twig = new \Twig_Environment($this->loader, $config);
     }
-        
+
     /**
      * {@inheritDoc}
      * 
@@ -57,7 +54,7 @@ class TwigDriver implements TemplateDriverInterface
      */
     public function addFunction(string $name, callable $callback, bool $rawHtml = false)
     {
-        $this->twig->addFunction(new \Twig_Function($name, $callback, !$rawHtml ? [] : ['is_safe' => ['html']]));    
+        $this->twig->addFunction(new \Twig_Function($name, $callback, ! $rawHtml ? [] : ['is_safe' => ['html']]));
     }
 
     /**
@@ -77,7 +74,7 @@ class TwigDriver implements TemplateDriverInterface
      */
     public function addFilter(string $name, callable $callback, bool $rawHtml = false)
     {
-        $this->twig->addFilter(new \Twig_Filter($name, $callback, !$rawHtml ? [] : ['is_safe' => ['html']]));   
+        $this->twig->addFilter(new \Twig_Filter($name, $callback, ! $rawHtml ? [] : ['is_safe' => ['html']]));
     }
 
     /**
@@ -89,7 +86,7 @@ class TwigDriver implements TemplateDriverInterface
     {
         $this->loader->addPath($dir);
     }
-    
+
     /**
      * {@inheritDoc}
      * 
@@ -97,15 +94,13 @@ class TwigDriver implements TemplateDriverInterface
      */
     public function render(string $template, array $vars = [], bool $return = false)
     {
-        if(!substr($template,-10) != '.html.twig')
-        {
+        if (! substr($template, - 10) != '.html.twig') {
             $template .= '.html.twig';
         }
-        
+
         $output = $this->twig->render($template, $vars);
-        
-        if(!$return)
-        {
+
+        if (! $return) {
             $this->container->get('response')->write($output);
         }
 

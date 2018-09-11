@@ -8,7 +8,6 @@
  * This file is part of the Luthier Framework. See the LICENSE file for copyright
  * information and license details
  */
-
 namespace Luthier\Routing;
 
 use Symfony\Component\Routing\Route as SfRoute;
@@ -21,13 +20,14 @@ use Symfony\Component\Routing\Route as SfRoute;
  */
 class Route
 {
+
     /**
      * Relative path
      * 
      * @var string
-     */   
+     */
     private $path;
-    
+
     /**
      * Full (absolute) path
      *
@@ -48,7 +48,7 @@ class Route
      * @access private
      */
     private $methods = [];
-    
+
     /**
      * @var string|callable
      */
@@ -102,105 +102,84 @@ class Route
      */
     public function __construct($methods, array $route)
     {
-        if($methods == 'any')
-        {
+        if ($methods == 'any') {
             $methods = RouteBuilder::HTTP_VERBS;
-        }
-        elseif(is_string($methods))
-        {
-            $methods = [ strtoupper($methods) ];
-        }
-        else
-        {
+        } elseif (is_string($methods)) {
+            $methods = [
+                strtoupper($methods)
+            ];
+        } else {
             array_shift($route);
         }
 
-        foreach($methods as $method)
-        {
+        foreach ($methods as $method) {
             $this->methods[] = strtoupper($method);
         }
 
-        [$path, $action] = $route;
+        [
+            $path,
+            $action
+        ] = $route;
 
         $this->path = trim($path, '/') == '' ? '/' : trim($path, '/');
 
-        if(!is_callable($action) && count(explode('@', $action)) != 2)
-        {
+        if (! is_callable($action) && count(explode('@', $action)) != 2) {
             throw new \Exception('Route action must be in controller@method syntax or be a valid callback');
         }
 
         $this->action = $action;
 
-        $attributes = isset($route[2]) && is_array($route[2])
-            ? $route[2]
-            : NULL;
+        $attributes = isset($route[2]) && is_array($route[2]) ? $route[2] : NULL;
 
-        if(!empty(RouteBuilder::getContext('prefix')))
-        {
+        if (! empty(RouteBuilder::getContext('prefix'))) {
             $prefixes = RouteBuilder::getContext('prefix');
-            foreach($prefixes as $prefix)
-            {
-                $this->prefix .= trim($prefix,'/') != ''
-                     ? '/' .trim($prefix, '/')
-                     : '';
+            foreach ($prefixes as $prefix) {
+                $this->prefix .= trim($prefix, '/') != '' ? '/' . trim($prefix, '/') : '';
             }
-            $this->prefix = trim($this->prefix,'/');
+            $this->prefix = trim($this->prefix, '/');
         }
 
-        if(!empty(RouteBuilder::getContext('namespace')))
-        {
+        if (! empty(RouteBuilder::getContext('namespace'))) {
             $namespaces = RouteBuilder::getContext('namespace');
-            foreach($namespaces as $namespace)
-            {
-                $this->namespace .= trim($namespace, '/') != ''
-                    ? '/' .trim($namespace, '/')
-                    : '';
+            foreach ($namespaces as $namespace) {
+                $this->namespace .= trim($namespace, '/') != '' ? '/' . trim($namespace, '/') : '';
             }
-            $this->namespace = trim($this->namespace,'/');
+            $this->namespace = trim($this->namespace, '/');
         }
 
-        if(!empty(RouteBuilder::getContext('middleware')['route']))
-        {
+        if (! empty(RouteBuilder::getContext('middleware')['route'])) {
             $middleware = RouteBuilder::getContext('middleware')['route'][0];
-            foreach($middleware as $_middleware)
-            {
-                if(!in_array($_middleware, $this->middleware))
-                {
+            foreach ($middleware as $_middleware) {
+                if (! in_array($_middleware, $this->middleware)) {
                     $this->middleware[] = $_middleware;
                 }
             }
         }
 
-        if(!empty(RouteBuilder::getContext('host')))
-        {
+        if (! empty(RouteBuilder::getContext('host'))) {
             $host = RouteBuilder::getContext('host')[0];
             $this->host = $host;
         }
 
-        if(!empty(RouteBuilder::getContext('schemes')))
-        {
+        if (! empty(RouteBuilder::getContext('schemes'))) {
             $schemes = RouteBuilder::getContext('schemes');
-            if(!empty($schemes))
-            {
+            if (! empty($schemes)) {
                 $this->schemes = $schemes[0];
             }
         }
 
-        if($attributes !== NULL)
-        {
-            if(isset($attributes['namespace']))
-            {
-                $this->namespace = (!empty($this->namespace) ? '/' : '' ) . trim($attributes['namespace'], '/');
+        if ($attributes !== NULL) {
+            if (isset($attributes['namespace'])) {
+                $this->namespace = (! empty($this->namespace) ? '/' : '') . trim($attributes['namespace'], '/');
             }
-            if(isset($attributes['prefix']))
-            {
-                $this->prefix .= (!empty($this->prefix) ? '/' : '' ) . trim($attributes['prefix'], '/');
+            if (isset($attributes['prefix'])) {
+                $this->prefix .= (! empty($this->prefix) ? '/' : '') . trim($attributes['prefix'], '/');
             }
-            if(isset($attributes['middleware']))
-            {
-                if(is_string($attributes['middleware']))
-                {
-                    $attributes['middleware'] = [ $attributes['middleware'] ];
+            if (isset($attributes['middleware'])) {
+                if (is_string($attributes['middleware'])) {
+                    $attributes['middleware'] = [
+                        $attributes['middleware']
+                    ];
                 }
                 $this->middleware = array_merge($this->middleware, array_unique($attributes['middleware']));
             }
@@ -209,49 +188,35 @@ class Route
         $params = [];
         $this->fullPath = [];
 
-        $_fullpath = trim($this->prefix,'/') != ''
-            ? $this->prefix . '/' . $this->path
-            : $this->path;
+        $_fullpath = trim($this->prefix, '/') != '' ? $this->prefix . '/' . $this->path : $this->path;
 
-        $_fullpath = trim($_fullpath, '/') == ''
-            ? '/'
-            : trim($_fullpath, '/');
+        $_fullpath = trim($_fullpath, '/') == '' ? '/' : trim($_fullpath, '/');
 
-        foreach(explode('/', $_fullpath) as $i => $segment)
-        {
-            if(preg_match('/^\{(.*)\}$/', $segment))
-            {
-                if($this->paramOffset === null)
-                {
+        foreach (explode('/', $_fullpath) as $i => $segment) {
+            if (preg_match('/^\{(.*)\}$/', $segment)) {
+                if ($this->paramOffset === null) {
                     $this->paramOffset = $i;
                 }
 
-                $param  = new RouteParam($segment);
+                $param = new RouteParam($segment);
 
-                if(in_array($param->getName(), $params))
-                {
-                    throw new \Exception('Duplicate route parameter "' . $param->getName() . '" in route "' .  $this->path . '"');
+                if (in_array($param->getName(), $params)) {
+                    throw new \Exception('Duplicate route parameter "' . $param->getName() . '" in route "' . $this->path . '"');
                 }
 
                 $params[] = $param->getName();
 
-                if( $param->isOptional() )
-                {
+                if ($param->isOptional()) {
                     $this->hasOptionalParams = true;
-                }
-                else
-                {
-                    if( $this->hasOptionalParams )
-                    {
+                } else {
+                    if ($this->hasOptionalParams) {
                         throw new \Exception('Required "' . $param->getName() . '" route parameter is not allowed at this position in "' . $this->path . '" route');
                     }
                 }
 
                 $this->params[] = $param;
-                $this->fullPath[] = '{' . $param->getName() . ( $param->isOptional() ? '?' : '') . '}';
-            }
-            else
-            {
+                $this->fullPath[] = '{' . $param->getName() . ($param->isOptional() ? '?' : '') . '}';
+            } else {
                 $this->fullPath[] = $segment;
             }
         }
@@ -269,34 +234,32 @@ class Route
         $name = $this->name;
         $path = $this->fullPath;
 
-        if(is_callable($this->action))
-        {
+        if (is_callable($this->action)) {
             $controller = $this->action;
-        }
-        else
-        {
-            $controller = (!empty($this->namespace) ? $this->namespace . '\\' : '')
-                . implode('::', explode('@', $this->action));
+        } else {
+            $controller = (! empty($this->namespace) ? $this->namespace . '\\' : '') . implode('::', explode('@', $this->action));
         }
 
         $defaults = [
             '_controller' => $controller,
-            '_orig_route' => $this,
+            '_orig_route' => $this
         ];
-        
+
         $requirements = [];
 
-        foreach($this->params as $param)
-        {
+        foreach ($this->params as $param) {
             $requirements[$param->getName()] = $param->getRegex();
         }
 
-        $options    = [];
-        $host       = $this->host;
-        $schemes    = $this->schemes;
-        $methods    = $this->methods;
+        $options = [];
+        $host = $this->host;
+        $schemes = $this->schemes;
+        $methods = $this->methods;
 
-        return [$this->name,  new SfRoute($path, $defaults, $requirements, $options, $host, $schemes, $methods)];
+        return [
+            $this->name,
+            new SfRoute($path, $defaults, $requirements, $options, $host, $schemes, $methods)
+        ];
     }
 
     /**
@@ -309,12 +272,9 @@ class Route
      */
     public function param(string $name, $value = null)
     {
-        foreach($this->params as &$param)
-        {
-            if($name == $param->getName())
-            {
-                if($value !== null)
-                {
+        foreach ($this->params as &$param) {
+            if ($name == $param->getName()) {
+                if ($value !== null) {
                     $param->value = $value;
                 }
                 return $param->value;
@@ -344,18 +304,14 @@ class Route
      */
     public function middleware($middleware)
     {
-
-        if(is_array($middleware))
-        {
+        if (is_array($middleware)) {
             $this->middleware = array_merge($this->middleware, $middleware);
-        }
-        else
-        {
+        } else {
             $this->middleware[] = $middleware;
         }
         return $this;
     }
-    
+
     /**
      * Sets the route host
      * 
@@ -392,7 +348,7 @@ class Route
         $this->middleware[] = new \Luthier\Http\Middleware\AjaxMiddleware();
         return $this;
     }
-    
+
     /**
      * Checks if the route has a specific parameter
      *
@@ -402,10 +358,8 @@ class Route
      */
     public function hasParam(string $name)
     {
-        foreach($this->params as &$param)
-        {
-            if($name == $param->getName())
-            {
+        foreach ($this->params as &$param) {
+            if ($name == $param->getName()) {
                 return true;
             }
         }
@@ -536,10 +490,8 @@ class Route
     {
         $sticky = [];
 
-        foreach($this->params as $param)
-        {
-            if($param->isSticky())
-            {
+        foreach ($this->params as $param) {
+            if ($param->isSticky()) {
                 $sticky[] = $param->getName();
             }
         }

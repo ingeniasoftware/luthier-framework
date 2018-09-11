@@ -14,40 +14,38 @@ namespace Luthier\Database;
 use Psr\Container\ContainerInterface;
 
 /**
- * Wrapper of PDO used by Luthier Framework
+ * Simple PDO wrapper
  * 
  * @author Anderson Salas <anderson@ingenia.me>
  */
 class Connection extends \PDO
 {
+
     /**
      * @var ContainerInterface
      */
     private $container;
-    
+
     /**
      * @param ContainerInterface $container
      */
     public function __construct(ContainerInterface $container)
     {
-        $driver   = $container->get('DB_TYPE');
-        $host     = $container->get('DB_HOST');
+        $driver = $container->get('DB_TYPE');
+        $host = $container->get('DB_HOST');
         $username = $container->get('DB_USER');
         $password = $container->get('DB_PASS');
         $database = $container->get('DB_NAME');
-        
+
         $this->container = $container;
-        
-        parent::__construct(
-            "$driver:host=$host;dbname=$database",
-            $username, 
-            $password, 
-            [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION]
-        );
+
+        parent::__construct("$driver:host=$host;dbname=$database", $username, $password, [
+            \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION
+        ]);
     }
-    
+
     /**
-     * Loads a model
+     * Loads a (namespaced) model
      * 
      * @param string $model
      * 
@@ -56,12 +54,11 @@ class Connection extends \PDO
     public function model(string $model)
     {
         $namespace = $this->container->get('DB_MDNS');
-        
-        if(!empty($namespace))
-        {
+
+        if (! empty($namespace)) {
             $model = $namespace . '\\' . $model;
         }
-            
-        return new $model($this->container, $this);   
+
+        return new $model($this->container, $this);
     }
 }

@@ -70,21 +70,15 @@ class Request implements RequestInterface
     
     public function __get($property)
     {
-        if(($property == 'session' || $property == 'sessionFlash') && !$this->request->hasSession())
-        {
+        if (($property == 'session' || $property == 'sessionFlash') && !$this->request->hasSession()) {
             $this->request->setSession(new Session());
         }
         
-        if($property == 'session')
-        {
+        if ($property == 'session') {
             return $this->request->getSession();
-        }
-        else if($property== 'sessionFlash')
-        {
+        } else if($property== 'sessionFlash') {
             return $this->request->getSession()->getFlashBag(); 
-        }
-        else
-        {
+        } else {
             throw new \Exception("Try to get undefined Request::$property property");
         }
     }
@@ -103,13 +97,11 @@ class Request implements RequestInterface
             'sessionFlash' => null,
          ];
 
-        if(in_array($method, array_keys($httpContainers)))
-        {
+        if (in_array($method, array_keys($httpContainers))) {     
             $name    = $args[0] ?? NULL;
             $default = $args[1] ?? NULL;
 
-            if($method == 'session')
-            {                
+            if ($method == 'session') {                
                 return $name !== NULL
                     ? ($this->request->hasSession() 
                         ? $this->request->getSession()->get($name, $default)
@@ -117,9 +109,7 @@ class Request implements RequestInterface
                     : ($this->request->hasSession()
                         ? $this->request->getSession()->all()
                         : []);
-            }
-            else if($method == 'sessionFlash')
-            {
+            } else if($method == 'sessionFlash') {
                 return $name !== NULL
                     ? ($this->request->hasSession()
                         ? $this->request->getSession()->getFlashBag()->get($name, $default ?? [])
@@ -127,20 +117,14 @@ class Request implements RequestInterface
                     : ($this->request->hasSession()
                         ? $this->request->getSession()->getFlashBag()->all()
                         : []);
-            }
-            else 
-            {
+            } else {
                 return $name !== NULL
                     ? $this->request->{$httpContainers[$method]}->get($name, $default)
                     : $this->request->{$httpContainers[$method]}->all();
             }
-        }
-        else if( method_exists($this->request, $method) )
-        {
+        } else if(method_exists($this->request, $method)) {
             return call_user_func_array([$this->request, $method], $args);
-        }
-        else
-        {
+        } else {
             throw new \BadMethodCallException("Call to undefined method Request::{$method}()");
         }
     }
@@ -162,8 +146,7 @@ class Request implements RequestInterface
      */
     public function baseUrl(string $url = '') : string
     {
-        if($this->container->get('APP_URL') !== null)
-        {
+        if($this->container->get('APP_URL') !== null){
             return $this->container->get('APP_URL') . '/' . trim($url, '/');
         }
 

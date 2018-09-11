@@ -8,7 +8,6 @@
  * This file is part of the Luthier Framework. See the LICENSE file for copyright
  * information and license details
  */
-
 namespace Luthier\Routing;
 
 /**
@@ -18,6 +17,7 @@ namespace Luthier\Routing;
  */
 final class RouteParam
 {
+
     /**
      * @var string
      */
@@ -29,7 +29,7 @@ final class RouteParam
      * @var string
      */
     private $regex;
-    
+
     /**
      * @var string
      */
@@ -62,10 +62,9 @@ final class RouteParam
      *
      * @var string[]
      */
-    private static $placeholderPatterns = [
-        '{num:[a-zA-Z0-9-_]*(\?}|})'  => '(:num)', # (:num) route
-        '{any:[a-zA-Z0-9-_]*(\?}|})'  => '(:any)', # (:any) route
-        '{[a-zA-Z0-9-_]*(\?}|})'      => '(:any)', # Everything else
+    private static $placeholderPatterns = ['{num:[a-zA-Z0-9-_]*(\?}|})' => '(:num)', // (:num) route
+    '{any:[a-zA-Z0-9-_]*(\?}|})' => '(:any)', // (:any) route
+    '{[a-zA-Z0-9-_]*(\?}|})' => '(:any)' // Everything else
     ];
 
     /**
@@ -73,10 +72,7 @@ final class RouteParam
      *
      * @var string[]
      */
-    private static $placeholderReplacements = [
-        '/\(:any\)/'  => '[^/]+',
-        '/\(:num\)/'  => '[0-9]+',
-    ];
+    private static $placeholderReplacements = ['/\(:any\)/' => '[^/]+','/\(:num\)/' => '[0-9]+'];
 
     /**
      * Gets the placeholder -> regex conversion array
@@ -87,7 +83,7 @@ final class RouteParam
     {
         return self::$placeholderReplacements;
     }
-    
+
     /**
      * @param string $segment Route segment
      */
@@ -98,31 +94,26 @@ final class RouteParam
 
         $matches = [];
 
-        if(preg_match('/{\((.*)\):[a-zA-Z0-9-_]*(\?}|})/', $segment, $matches))
-        {
+        if (preg_match('/{\((.*)\):[a-zA-Z0-9-_]*(\?}|})/', $segment, $matches)) {
             $this->placeholder = $matches[1];
             $this->regex = $matches[1];
             $name = preg_replace('/\((.*)\):/', '', $segment, 1);
-        }
-        else
-        {
-            foreach(self::$placeholderPatterns as $regex => $replacement)
-            {
-                $parsedSegment = preg_replace('/'.$regex.'/' , $replacement, $segment);
+        } else {
+            foreach (self::$placeholderPatterns as $regex => $replacement) {
+                $parsedSegment = preg_replace('/' . $regex . '/', $replacement, $segment);
 
-                if($segment != $parsedSegment )
-                {
+                if ($segment != $parsedSegment) {
                     $this->placeholder = $replacement;
-                    $this->regex = preg_replace(array_keys(self::$placeholderReplacements), array_values(self::$placeholderReplacements), $replacement,1);
-                    $name = preg_replace(['/num:/', '/any:/'], '', $segment, 1);
+                    $this->regex = preg_replace(array_keys(self::$placeholderReplacements), array_values(self::$placeholderReplacements), $replacement, 1);
+                    $name = preg_replace(['/num:/','/any:/'], '', $segment, 1);
                     break;
                 }
             }
         }
 
-        $this->optional = substr($segment,-2,1) == '?';
-        $this->name     = substr($name,1, !$this->optional ? -1 : -2);
-        $this->sticky   = substr($this->name,0,1) == '_';
+        $this->optional = substr($segment, - 2, 1) == '?';
+        $this->name = substr($name, 1, ! $this->optional ? - 1 : - 2);
+        $this->sticky = substr($this->name, 0, 1) == '_';
     }
 
     /**

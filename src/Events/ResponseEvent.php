@@ -21,11 +21,11 @@ use Symfony\Component\EventDispatcher\Event;
  */
 class ResponseEvent extends Event
 {
+
     /**
      * @var ContainerInterface
      */
     private $container;
-
 
     /**
      * @param ContainerInterface $container
@@ -42,7 +42,7 @@ class ResponseEvent extends Event
     {
         return $this->container->get('request');
     }
-    
+
     /**
      * @return \Luthier\Http\ResponseInterface;
      */
@@ -50,7 +50,7 @@ class ResponseEvent extends Event
     {
         return $this->container->get('response');
     }
-    
+
     /**
      * @return ContainerInterface
      */

@@ -8,7 +8,6 @@
  * This file is part of the Luthier Framework. See the LICENSE file for copyright
  * information and license details
  */
-
 namespace Luthier\Routing;
 
 use Psr\Container\ContainerInterface;
@@ -22,17 +21,16 @@ use Symfony\Component\Routing\RequestContext;
 use Symfony\Component\Routing\Generator\UrlGenerator;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
-
 /**
  * Abstraction of the Symfony Router component. Contains methods to define new routes
- *   * get
- *   * post
- *   * patch
- *   * put
- *   * options
- *   * trace
- *   * head
- *   * delete
+ *   - get()
+ *   - post()
+ *   - patch()
+ *   - put()
+ *   - options()
+ *   - trace()
+ *   - head()
+ *   - delete()
  *   
  * Multiple HTTP Verbs can be accepted in a route by using the match([]) method
  * 
@@ -45,31 +43,21 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
  * @author Anderson Salas <anderson@ingenia.me>
  */
 class RouteBuilder implements RouteBuilderInterface
-{    
+{
+
     const HTTP_VERBS = ['GET','POST','PUT','PATCH','DELETE','HEAD','OPTIONS','TRACE'];
 
     /**
      * @var ContainerInterface
      */
     protected $container;
-    
+
     /**
      * Route builder context
      *
      * @var array $context
      */
-    protected static $context = [
-        'middleware' => [
-            'route'  => [],
-            'global' => [],
-            'alias'  => [],
-        ],
-        'namespace' => [],
-        'prefix'    => [],
-        'params'    => [],
-        'host'      => [],
-        'schemes'   => [],
-    ];
+    protected static $context = ['middleware' => ['route' => [],'global' => [],'alias' => []],'namespace' => [],'prefix' => [],'params' => [],'host' => [],'schemes' => []];
 
     /**
      * @var Command[] $commands
@@ -85,17 +73,17 @@ class RouteBuilder implements RouteBuilderInterface
      * @var array $names
      */
     protected $names = [];
-        
+
     /**
      * @var RouteCollection $routeCollection
      */
     protected $routeCollection;
-    
+
     /**
      * @var UrlGenerator $routeGenerator
      */
     protected $routeGenerator;
-    
+
     /**
      * @var RequestContext $requestContext
      */
@@ -121,7 +109,7 @@ class RouteBuilder implements RouteBuilderInterface
      * @var callable $errorCallback
      */
     protected $errorCallback;
-    
+
     /**
      * @var \Luthier\Routing\Route
      */
@@ -129,50 +117,41 @@ class RouteBuilder implements RouteBuilderInterface
 
     public function __construct(ContainerInterface $container)
     {
-        $this->container = $container; 
+        $this->container = $container;
         $this->routeCollection = new RouteCollection();
-        $this->requestContext  = new RequestContext();   
+        $this->requestContext = new RequestContext();
         $this->middleware('ajax', AjaxMiddleware::class);
     }
-    
+
     public function __call($callback, array $attributes)
     {
-        if($callback == 'command')
-        {
-            [$name, $_callback] = $attributes;
+        if ($callback == 'command') {
+            [$name,$_callback] = $attributes;
 
             $command = new LuthierCommand($name, $_callback);
 
-            if(isset($this->commands[$command->getName()]))
-            {
+            if (isset($this->commands[$command->getName()])) {
                 echo 'ERROR: Duplicated ' . $command->getName() . ' command!' . PHP_EOL;
-                exit(-1);
+                exit(- 1);
             }
 
-            $this->commands[$command->getName()] = function() use($command){
+            $this->commands[$command->getName()] = function () use ($command) {
                 return $command->compile();
             };
 
             return $command;
-        }
-        else if(in_array(strtoupper($callback), self::HTTP_VERBS) || in_array($callback, ['match']))
-        {
+        } else if (in_array(strtoupper($callback), self::HTTP_VERBS) || in_array($callback, ['match'])) {
 
-            if($callback == 'match')
-            {
+            if ($callback == 'match') {
                 $methods = $attributes[0];
-            }
-            else
-            {
+            } else {
                 $methods = $callback;
             }
 
             $route = new LuthierRoute($methods, $attributes);
             $this->routes[] = $route;
             return $route;
-        }
-        else
-        {
+        } else {
             throw new \BadMethodCallException("Call to undefined method Luthier\RouteBuilder::{$callback}() ");
         }
     }
@@ -201,41 +180,34 @@ class RouteBuilder implements RouteBuilderInterface
      */
     public function group(string $prefix, $attributes, $routes = null)
     {
-        if($routes === null && is_callable($attributes))
-        {
-            $routes     = $attributes;
+        if ($routes === null && is_callable($attributes)) {
+            $routes = $attributes;
             $attributes = [];
         }
 
         self::$context['prefix'][] = $prefix;
 
-        if(isset($attributes['namespace']))
-        {
+        if (isset($attributes['namespace'])) {
             self::$context['namespace'][] = $attributes['namespace'];
         }
 
-        if(isset($attributes['schemes']))
-        {
+        if (isset($attributes['schemes'])) {
             self::$context['schemes'][] = $attributes['schemes'];
         }
 
-        if(isset($attributes['middleware']))
-        {
-            if(!is_array($attributes['middleware']) && !is_string($attributes['middleware']))
-            {
+        if (isset($attributes['middleware'])) {
+            if (! is_array($attributes['middleware']) && ! is_string($attributes['middleware'])) {
                 throw new \Exception('Route group middleware must be an array o a string');
             }
 
-            if(is_string($attributes['middleware']))
-            {
-                $attributes['middleware'] = [ $attributes['middleware'] ];
+            if (is_string($attributes['middleware'])) {
+                $attributes['middleware'] = [$attributes['middleware']];
             }
 
             self::$context['middleware']['route'][] = $attributes['middleware'];
         }
 
-        if(isset($attributes['host']))
-        {
+        if (isset($attributes['host'])) {
             self::$context['host'] = $attributes['host'];
         }
 
@@ -244,27 +216,23 @@ class RouteBuilder implements RouteBuilderInterface
 
         array_pop(self::$context['prefix']);
 
-        if(isset($attributes['namespace']))
-        {
+        if (isset($attributes['namespace'])) {
             array_pop(self::$context['namespace']);
         }
 
-        if(isset($attributes['middleware']))
-        {
+        if (isset($attributes['middleware'])) {
             array_pop(self::$context['middleware']['route']);
         }
 
-        if(isset($attributes['schemes']))
-        {
+        if (isset($attributes['schemes'])) {
             array_pop(self::$context['schemes']);
         }
 
-        if(isset($attributes['host']))
-        {
+        if (isset($attributes['host'])) {
             self::$context['host'] = NULL;
         }
-    }  
-    
+    }
+
     /**
      * Defines (or runs) a global middleware 
      * 
@@ -298,71 +266,58 @@ class RouteBuilder implements RouteBuilderInterface
      */
     public function middleware($middleware)
     {
-        if(count(func_get_args()) == 2)
-        {
-            [$name, $middleware] = func_get_args();
+        if (count(func_get_args()) == 2) {
+            [$name,$middleware] = func_get_args();
 
-            if(!is_string($name))
-            {
+            if (! is_string($name)) {
                 throw new \InvalidArgumentException("The middleware alias must be a string");
             }
 
-            if(!is_callable($middleware) && !class_exists($middleware))
-            {
+            if (! is_callable($middleware) && ! class_exists($middleware)) {
                 throw new \InvalidArgumentException("Invalid middleware definition. Must be a valid callback." . (is_string($middleware) ? " (Does the '$middleware' class exists?)" : ''));
             }
 
             self::$context['middleware']['alias'][$name] = $middleware;
-        }
-        else 
-        {
-            if(!is_array($middleware))
-            {
-                $middleware = [ $middleware ];
+        } else {
+            if (! is_array($middleware)) {
+                $middleware = [$middleware];
             }
-            
-            foreach($middleware as $_middleware)
-            {
-                if(!in_array($_middleware, self::$context['middleware']['global']))
-                {
+
+            foreach ($middleware as $_middleware) {
+                if (! in_array($_middleware, self::$context['middleware']['global'])) {
                     self::$context['middleware']['global'][] = $_middleware;
                 }
             }
         }
     }
-    
+
     /**
      * {@inheritDoc}
      * 
      * @see \Luthier\Routing\RouteBuilderInterface::getRoutes()
      */
-    public function getRoutes() : RouteCollection
+    public function getRoutes(): RouteCollection
     {
-        foreach($this->routes as $i => $luthierRoute)
-        {
-            [$name, $route] = $luthierRoute->compile();
+        foreach ($this->routes as $i => $luthierRoute) {
+            [$name,$route] = $luthierRoute->compile();
 
-            if(empty($name))
-            {
-                $name = '__unnamed_route_' . str_pad($i ,3, '0', STR_PAD_LEFT);
-            }
-            else
-            {
-                if(isset($this->names[$name]))
-                {
+            if (empty($name)) {
+                $name = '__unnamed_route_' . str_pad($i, 3, '0', STR_PAD_LEFT);
+            } else {
+                if (isset($this->names[$name])) {
                     throw new \Exception("Duplicated '$name' route");
                 }
                 $this->names[$name] = $luthierRoute->getStickyParams();
             }
-            
+
             $this->routeCollection->add($name, $route);
         }
 
         $this->routeGenerator = new UrlGenerator($this->routeCollection, $this->requestContext);
-        
+
         return $this->routeCollection;
     }
-    
+
     /**
      * Gets the defined application commands
      * 
@@ -384,34 +339,27 @@ class RouteBuilder implements RouteBuilderInterface
     {
         return self::$context[$name];
     }
-    
+
     /**
      * {@inheritDoc}
      * 
      * @see \Luthier\Routing\RouteBuilderInterface::getRouteByName()
      */
-    public function getRouteByName(string $name, array $args = [], bool $absoluteUrl = true) : string
+    public function getRouteByName(string $name, array $args = [], bool $absoluteUrl = true): string
     {
         $route = $this->currentRoute;
 
-        if(!isset($this->names[$name]))
-        {
+        if (! isset($this->names[$name])) {
             throw new \Exception("Undefined \"$name\" route");
         }
 
-        foreach($this->names[$name] as $stickyParam)
-        {
-            if($route->hasParam($stickyParam))
-            {
+        foreach ($this->names[$name] as $stickyParam) {
+            if ($route->hasParam($stickyParam)) {
                 $args[$stickyParam] = $route->param($stickyParam);
             }
         }
 
-        return $this->routeGenerator->generate(
-            $name,
-            $args,
-            $absoluteUrl ? UrlGeneratorInterface::ABSOLUTE_URL : NULL
-        );
+        return $this->routeGenerator->generate($name, $args, $absoluteUrl ? UrlGeneratorInterface::ABSOLUTE_URL : NULL);
     }
 
     /**
@@ -423,7 +371,7 @@ class RouteBuilder implements RouteBuilderInterface
     {
         return $this->requestContext;
     }
-    
+
     /**
      * Returns a valid middleware callable from the given parameter
      * 
@@ -434,45 +382,36 @@ class RouteBuilder implements RouteBuilderInterface
      */
     public function getMiddleware($middleware)
     {
-        if(is_callable($middleware))
-        {
-            if($middleware instanceof \Closure)
-            {
+        if (is_callable($middleware)) {
+            if ($middleware instanceof \Closure) {
                 $container = $this->container;
-                $middleware = \Closure::bind($middleware, $container, ContainerInterface::class);    
+                $middleware = \Closure::bind($middleware, $container, ContainerInterface::class);
             }
-            
+
             return $middleware;
         }
 
-        if(is_string($middleware))
-        {
-            if(isset(self::$context['middleware']['alias'][$middleware]))
-            {
+        if (is_string($middleware)) {
+            if (isset(self::$context['middleware']['alias'][$middleware])) {
                 return self::getMiddleware(self::$context['middleware']['alias'][$middleware]);
             }
 
-            if(class_exists($middleware))
-            {
+            if (class_exists($middleware)) {
                 $middleware = new $middleware($this->container);
-            }
-            else
-            {
+            } else {
                 throw new \Exception("Unknown \"$middleware\" middleware class/alias");
             }
         }
 
-        if(!$middleware instanceof MiddlewareInterface)
-        {
-            throw new \Exception('The middleware "' . get_class($middleware) . '" MUST implement the '. MiddlewareInterface::class . ' interface' );
+        if (! $middleware instanceof MiddlewareInterface) {
+            throw new \Exception('The middleware "' . get_class($middleware) . '" MUST implement the ' . MiddlewareInterface::class . ' interface');
         }
 
-        return function($request, $response, $next) use($middleware)
-        {
+        return function ($request, $response, $next) use ($middleware) {
             return $middleware->run($request, $response, $next);
         };
     }
-    
+
     /**
      * @param \Closure $callback
      * 
@@ -480,9 +419,9 @@ class RouteBuilder implements RouteBuilderInterface
      */
     private function bindContainer(\Closure $callback)
     {
-        return \Closure::bind($callback, $this->container, ContainerInterface::class);   
+        return \Closure::bind($callback, $this->container, ContainerInterface::class);
     }
-    
+
     /**
      * Sets the callback to be invoked when a HTTP 404 error occurs
      * 
@@ -492,7 +431,7 @@ class RouteBuilder implements RouteBuilderInterface
      */
     public function setHttpNotFoundCallback(\Closure $callback)
     {
-        $this->httpNotFoundCallback = $this->bindContainer($callback);       
+        $this->httpNotFoundCallback = $this->bindContainer($callback);
         return $this;
     }
 
@@ -505,7 +444,7 @@ class RouteBuilder implements RouteBuilderInterface
      */
     public function setMethodHttpNotAllowedCallback(\Closure $callback)
     {
-        $this->httpMethodNotAllowedCallback = $this->bindContainer($callback); 
+        $this->httpMethodNotAllowedCallback = $this->bindContainer($callback);
         return $this;
     }
 
@@ -518,10 +457,10 @@ class RouteBuilder implements RouteBuilderInterface
      */
     public function setErrorCallback(\Closure $callback)
     {
-        $this->errorCallback = $this->bindContainer($callback); 
+        $this->errorCallback = $this->bindContainer($callback);
         return $this;
     }
-    
+
     /**
      * @param LuthierRoute $route
      * 
@@ -532,7 +471,7 @@ class RouteBuilder implements RouteBuilderInterface
         $this->currentRoute = $route;
         return $this;
     }
-    
+
     /**
      * Gets the httpNotFoundCallback property
      * 
@@ -542,7 +481,7 @@ class RouteBuilder implements RouteBuilderInterface
     {
         return $this->httpNotFoundCallback;
     }
-    
+
     /**
      * Gets the httpMethodNotAllowedCallback property
      *
@@ -552,7 +491,7 @@ class RouteBuilder implements RouteBuilderInterface
     {
         return $this->httpMethodNotAllowedCallback;
     }
-    
+
     /**
      * Gets the errorCallback property
      *
@@ -562,7 +501,7 @@ class RouteBuilder implements RouteBuilderInterface
     {
         return $this->errorCallback;
     }
-    
+
     /**
      * Gets an array of all middleware registered for current request
      * 
@@ -570,11 +509,11 @@ class RouteBuilder implements RouteBuilderInterface
      */
     public function getMiddlewareStack(LuthierRoute $route)
     {
-        $routeMiddleware  = $route->getMiddleware() ?? [];
+        $routeMiddleware = $route->getMiddleware() ?? [];
         $globalMiddleware = self::$context['middleware']['global'];
-        return array_merge($routeMiddleware,$globalMiddleware);
+        return array_merge($routeMiddleware, $globalMiddleware);
     }
-    
+
     /**
      * Counts the defined routes
      * 

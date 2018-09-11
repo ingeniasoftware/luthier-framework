@@ -16,5 +16,6 @@ namespace Luthier\Http\Middleware;
  */
 interface MiddlewareInterface
 {
+
     public function run($request, $response, $next);
 }

@@ -8,22 +8,22 @@
  * This file is part of the Luthier Framework. See the LICENSE file for copyright
  * information and license details
  */
-
 namespace Luthier;
 
 use Symfony\Component\Dotenv\Dotenv;
 use Symfony\Component\Dotenv\Exception\PathException;
 
 /**
- * Represents the configuration of a Luthier Framework application.
+ * Handles the configuration of the Luthier Framework applications
  *
- * Applications can be configured via .env files and with arrays, so this class checks
- * which of them are provided and returns the actual configuration.
+ * They can be configured via .env files or directly with arrays, so this class 
+ * parses and returns the actual configuration.
  *
  * @author Anderson Salas <anderson@ingenia.me>
  */
 class Configuration
 {
+
     /**
      * @var array
      */
@@ -41,22 +41,22 @@ class Configuration
      */
     protected static $defaultConfig = [
         // General configuration
-        'APP_ENV'   => 'development',
-        'APP_NAME'  => 'Luthier',
-        'APP_URL'   => null,
-        'APP_LOG'   => null,
+        'APP_ENV' => 'development',
+        'APP_NAME' => 'Luthier',
+        'APP_URL' => null,
+        'APP_LOG' => null,
         'APP_CACHE' => null,
-        'APP_PATH'  => null,
+        'APP_PATH' => null,
         // Database configuration
-        'DB_TYPE'   => 'mysql',
-        'DB_HOST'   => 'localhost',
-        'DB_USER'   => 'root',
-        'DB_PASS'   => null,
-        'DB_NAME'   => null,
-        'DB_MDNS'   => null,
+        'DB_TYPE' => 'mysql',
+        'DB_HOST' => 'localhost',
+        'DB_USER' => 'root',
+        'DB_PASS' => null,
+        'DB_NAME' => null,
+        'DB_MDNS' => null,
         // Template configuration
         'TEMPLATE_DRIVER' => 'default',
-        'TEMPLATE_DIR'    => null,
+        'TEMPLATE_DIR' => null
     ];
 
     /**
@@ -65,10 +65,10 @@ class Configuration
      */
     public function __construct(?array $config = [], ?string $envFolder = null)
     {
-        $this->config    = $config ?? [];
+        $this->config = $config ?? [];
         $this->envFolder = $envFolder;
     }
-        
+
     /**
      * Parses the provided application configuration
      *
@@ -85,54 +85,38 @@ class Configuration
     {
         $config = [];
 
-        if($this->envFolder !== NULL)
-        {
-            try
-            {
-                (new Dotenv())->load( ($this->envFolder !== NULL ? $this->envFolder . '/' : '' ) . '.env' );
-            }
-            catch(PathException $e)
-            {
+        if ($this->envFolder !== NULL) {
+            try {
+                (new Dotenv())->load(($this->envFolder !== NULL ? $this->envFolder . '/' : '') . '.env');
+            } catch (PathException $e) {
                 throw new \Exception('Unable to find your application .env file. Does the file exists?');
-            }
-            catch(\Exception $e)
-            {
+            } catch (\Exception $e) {
                 throw new \Exception('Unable to parse your application .env file');
             }
         }
 
         // Failsafe base configuration
-        foreach(self::$defaultConfig as $name => $default)
-        {
-            if($this->envFolder !== NULL && getenv($name) !== FALSE)
-            {
+        foreach (self::$defaultConfig as $name => $default) {
+            if ($this->envFolder !== NULL && getenv($name) !== FALSE) {
                 // Empty strings are considered NULL
-                $config[$name] = !empty(getenv($name)) 
-                    ? getEnv($name)
-                    : null;
-            }
-            else if(isset($this->config[$name]))
-            {
+                $config[$name] = ! empty(getenv($name)) ? getEnv($name) : null;
+            } else if (isset($this->config[$name])) {
                 $config[$name] = $this->config[$name];
-            }
-            else
-            {
+            } else {
                 $config[$name] = $default;
             }
         }
 
         // All other configuration
-        foreach($this->config as $name => $value)
-        {
-            if(!isset($config[$name]))
-            {
+        foreach ($this->config as $name => $value) {
+            if (! isset($config[$name])) {
                 $config[$name] = $value;
             }
         }
 
         return $config;
     }
-    
+
     /**
      * @return array
      */
@@ -140,7 +124,7 @@ class Configuration
     {
         return self::$defaultConfig;
     }
-    
+
     /**
      * @return array
      */
@@ -148,7 +132,7 @@ class Configuration
     {
         return $this->config;
     }
-    
+
     /**
      * @return string
      */
@@ -156,7 +140,7 @@ class Configuration
     {
         return $this->envFolder;
     }
-    
+
     /**
      * @param array $config
      *
@@ -167,7 +151,7 @@ class Configuration
         $this->config = $config;
         return $this;
     }
-    
+
     /**
      * @param string $envFolder
      *

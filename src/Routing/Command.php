@@ -12,16 +12,21 @@
 namespace Luthier\Routing;
 
 use Symfony\Component\Console\Command\Command as SfCommand;
-use Symfony\Component\Console\Input\{InputInterface, InputDefinition, InputOption};
+use Symfony\Component\Console\Input\ {
+    InputInterface,
+    InputDefinition,
+    InputOption
+};
 use Symfony\Component\Console\Output\OutputInterface;
 
 /**
- * Abstract representation of an application command.
+ * A Luthier Framework application console command
  * 
  * @author Anderson Salas <anderson@ingenia.me>
  */
 class Command
 {
+
     /**
      * @var string
      */
@@ -99,19 +104,18 @@ class Command
     public function param(string $name, $shortcuts = null, string $description = '', string $mode = 'required', $default = null)
     {
         $modes = [
-            'none'     => InputOption::VALUE_NONE,
+            'none' => InputOption::VALUE_NONE,
             'required' => InputOption::VALUE_REQUIRED,
             'optional' => InputOption::VALUE_OPTIONAL,
-            'array'    => InputOption::VALUE_IS_ARRAY,
+            'array' => InputOption::VALUE_IS_ARRAY
         ];
 
-        if(!in_array($mode, $modes))
-        {
+        if (! in_array($mode, $modes)) {
             throw new \Exception("Unknown command parameter '$mode' mode");
         }
 
         $this->params[] = new InputOption($name, $shortcuts, $mode, $description, $default);
-        
+
         return $this;
     }
 
@@ -174,8 +178,8 @@ class Command
     {
         $_command = &$this;
 
-        return new Class($_command) extends SfCommand
-        {
+        return new Class($_command) extends SfCommand {
+
             private $_command;
 
             public function __construct($_command)
@@ -189,8 +193,7 @@ class Command
                 $this->setName($this->_command->getName());
                 $this->setDescription($this->_command->getDescription());
                 $this->setHelp($this->_command->getHelp());
-                if(!empty($this->_command->getParams()))
-                {
+                if (! empty($this->_command->getParams())) {
                     $this->setDefinition(new InputDefinition($this->_command->getParams()));
                 }
             }
@@ -198,9 +201,11 @@ class Command
             public function execute(InputInterface $input, OutputInterface $output)
             {
                 $callback = \Closure::bind($this->_command->getCallback(), $this, SfCommand::class);
-                call_user_func_array($callback, [$input, $output]);
+                call_user_func_array($callback, [
+                    $input,
+                    $output
+                ]);
             }
         };
-
     }
 }

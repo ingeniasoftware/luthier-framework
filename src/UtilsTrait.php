@@ -16,12 +16,13 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\JsonResponse;
 
 /**
- * Various helper methods used across the framework
+ * Helper methods used across the framework
  * 
  * @author AndersonRafael
  */
 trait UtilsTrait
 {
+
     /**
      * Checks if the application is running in a CLI environment
      *
@@ -29,21 +30,18 @@ trait UtilsTrait
      */
     public function isCli()
     {
-        return (PHP_SAPI === 'cli' OR defined('STDIN'));
+        return (PHP_SAPI === 'cli' or defined('STDIN'));
     }
-    
+
     public function errorResponse(Request $request, int $status = 500, string $title = 'Ups!', string $message = 'Something went wrong')
     {
-        if($request->isXmlHttpRequest())
-        {
+        if ($request->isXmlHttpRequest()) {
             return new JsonResponse([$title => $message], $status);
-        }
-        else
-        {
+        } else {
             ob_start();
             require __DIR__ . '/Resources/Views/Error.php';
             $responseBody = ob_get_clean();
             return new Response($responseBody, $status);
-        }  
+        }
     }
 }

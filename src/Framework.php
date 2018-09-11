@@ -17,21 +17,21 @@ use Symfony\Component\Console\Application;
 use Symfony\Component\Console\CommandLoader\FactoryCommandLoader;
 
 /**
- * An application of Luthier Framework
+ * An "application" object of Luthier Framework
  *
  * @author Anderson Salas <anderson@ingenia.me>
  */
 class Framework
 {
     use UtilsTrait;
-    
+
     const VERSION = '0.1.0-alpha1';
-    
+
     /**
      * @var \Symfony\Component\HttpFoundation\Request
      */
     protected $sfRequest;
-    
+
     /**
      * @var Container
      */
@@ -41,81 +41,72 @@ class Framework
      * @var Configuration
      */
     protected $config;
-    
+
     /**
      * @var string
      */
     protected $appPath;
-    
+
     /**
      * @var \Whoops\Run
      */
     protected $whoops;
-    
+
     /**
      * @var \Luthier\Routing\RouteBuilderInterface
      */
     public static $router;
-    
+
     /**
      * @var \Luthier\Http\RequestInterface
      */
     public static $request;
-    
+
     /**
      * @var \Luthier\Http\ResponseInterface
      */
     public static $response;
-    
+
     /**
      * @var \Luthier\Templating\Driver\TemplateDriverInterface
      */
     public static $template;
-        
+
     /**
-     * @param mixed       $config     Application configuration
-     * @param Container   $container  Application container
-     * @param SfRequest   $request    Symfony request 
-     * @param string      $appPath    Application base path (by default the current working directory)
+     * @param mixed     $config    Application configuration
+     * @param Container $container Application container
+     * @param SfRequest $request   Symfony request 
+     * @param string    $appPath   Application base path (by default the current working directory)
      * 
      * @throws \Exception
      */
     public function __construct($config = null, ?Container $container = null, ?SfRequest $request = null, ?string $appPath = null)
     {
         $this->container = $container ?? new Container();
-        $this->sfRequest = $request   ?? SfRequest::createFromGlobals();
-        $this->appPath   = $appPath   ?? getcwd();
-        
-        if(is_array($config) || $config === null)
-        {
-            $this->config = new Configuration($config);    
+        $this->sfRequest = $request ?? SfRequest::createFromGlobals();
+        $this->appPath = $appPath ?? getcwd();
+
+        if (is_array($config) || $config === null) {
+            $this->config = new Configuration($config);
+        } else if ($config instanceof Configuration) {
+            $this->config = $config;
+        } else {
+            throw new \Exception("You must provide an array of configuration values or an instance of the Luthier\Configuration class");
         }
-        else if($config instanceof Configuration)
-        {
-            $this->config = $config;           
-        }   
-        else
-        {
-            throw new \Exception("You must provide an array of configuration values or an instance of the Luthier\Configuration class");  
-        }
-        
-        // At this point, only a few services are required, the rest will be 
+
+        // At this point, only a few services are required, the rest will be
         // loaded during the application startup
-        foreach(['router','dispatcher','response','request'] as $name)
-        {
-            if(!$this->container->has($name))
-            {
-                [$type, $class, $aliases] = Container::getDefaultContainer()[$name];
+        foreach (['router','dispatcher','response','request'] as $name) {
+            if (! $this->container->has($name)) {
+                [$type,$class,$aliases] = Container::getDefaultContainer()[$name];
                 $this->container->{$type}($name, $class, $aliases);
             }
         }
-        
-        self::$router   = $this->container->get('router');
-        self::$request  = $this->container->get('request');
+
+        self::$router = $this->container->get('router');
+        self::$request = $this->container->get('request');
         self::$response = $this->container->get('response');
-        
-        // By setting these services as static properties of this class we
-        // can use some cool helpers such 'route()', 'url()', etc:
+
         require __DIR__ . '/Helpers.php';
     }
 
@@ -125,8 +116,8 @@ class Framework
      * @return mixed
      */
     public function __call($method, $args)
-    {          
-        return call_user_func_array([$this->container->get('router'), $method], $args);
+    {
+        return call_user_func_array([$this->container->get('router'),$method], $args);
     }
 
     /**
@@ -136,16 +127,13 @@ class Framework
      */
     public function __get($property)
     {
-        if($this->container->has($property))
-        {
+        if ($this->container->has($property)) {
             return $this->container->get($property);
-        }
-        else
-        {
+        } else {
             throw new \Exception("Trying to get undefined property Luthier\Framework::$property");
         }
     }
-    
+
     /**
      * Sets the application Symfony request
      *
@@ -158,7 +146,7 @@ class Framework
         $this->sfRequest = $request;
         return $this;
     }
-    
+
     /**
      * Sets the application dependency container
      *
@@ -171,7 +159,7 @@ class Framework
         $this->container = $container;
         return $this;
     }
-    
+
     /**
      * Sets the application configuration
      *
@@ -184,11 +172,11 @@ class Framework
         $this->config = $config;
         return $this;
     }
-    
+
     /**
      * Luthier Framework error handler
      * 
-     * @param int $type Error code
+     * @param int    $type 
      * @param string $message
      * @param string $file
      * @param string $line
@@ -198,26 +186,22 @@ class Framework
     public function errorHandler($level, $message, $file = null, $line = null)
     {
         $error = $message;
-        
-        if(!empty($file))
-        {
-            $error .= ' at ' . $file . ' on line ' . $line;  
+
+        if (! empty($file)) {
+            $error .= ' at ' . $file . ' on line ' . $line;
         }
-        
+
         $this->container->get('logger')->error($error);
-        
-        if($this->whoops === null)
-        {
+
+        if ($this->whoops === null) {
             $this->errorResponse($this->sfRequest)->send();
-        }
-        else
-        {
+        } else {
             $this->whoops->handleError($level, $message, $file, $line);
         }
-        
+
         exit(1);
     }
-    
+
     /**
      * Luthier Framework exception handler
      * 
@@ -225,37 +209,30 @@ class Framework
      */
     public function exceptionHandler($exception)
     {
-        $error = 'Uncaught exception ' . get_class($exception) . ': ' . $exception->getMessage() . 
-            ' at ' . $exception->getFile() . 
-            ' on line ' . $exception->getLine() .
-            PHP_EOL . 'Stack trace: ' . PHP_EOL . $exception->getTraceAsString();
-        
+        $error = 'Uncaught exception ' . get_class($exception) . ': ' . $exception->getMessage() . ' at ' . $exception->getFile() . ' on line ' . $exception->getLine() . PHP_EOL . 'Stack trace: ' . PHP_EOL . $exception->getTraceAsString();
+
         $this->container->get('logger')->error($error);
-        
-        if($this->whoops === null)
-        {
+
+        if ($this->whoops === null) {
             $this->errorResponse($this->sfRequest)->send();
+        } else {
+            $this->whoops->handleException($exception);
         }
-        else
-        {
-            $this->whoops->handleException($exception); 
-        }
-        
+
         exit(2);
     }
-    
+
     /**
      * Luthier Framework shutdown handler
      */
     public function shutdownHandler()
     {
-        if($error = error_get_last() AND $error !== null && $error['type'] !== E_STRICT)
-        {            
+        if ($error = error_get_last() and $error !== null && $error['type'] !== E_STRICT) {
             $this->errorHandler($error['type'], $error['message']);
         }
         exit(0);
     }
-        
+
     /**
      * Configures the application
      * 
@@ -266,125 +243,108 @@ class Framework
     {
         // Configuration
         $config = $this->config->parse();
-        
-        foreach($config as $name => $value)
-        {
+
+        foreach ($config as $name => $value) {
             $this->container->parameter($name, $value);
         }
-        
+
         // Container services/factories/parameters definition
-        foreach(Container::getDefaultContainer() as $name => [$type, $class, $locatorAliases])
-        {
-            if(!$this->container->has($name))
-            {
+        foreach (Container::getDefaultContainer() as $name => [$type,$class,$locatorAliases]) {
+            if (! $this->container->has($name)) {
                 $this->container->{$type}($name, $class, $locatorAliases);
             }
         }
-        
+
         // We will use this on our Request Handler service later
         $this->container->parameter('PRIVATE_SERVICES', $this->container->getPrivateAliases());
-        
+
         // PHP runtime configuration
-        switch($config['APP_ENV'])
-        {
+        switch ($config['APP_ENV']) {
             case 'development':
-                error_reporting(-1);
-                ini_set('display_errors',1);
+                error_reporting(- 1);
+                ini_set('display_errors', 1);
                 break;
             case 'production':
                 error_reporting(0);
-                ini_set('display_errors',0);
+                ini_set('display_errors', 0);
                 break;
             default:
                 throw new \Exception('The application environment is not configured correctly');
         }
-        
+
         // Error/exception reporting configuration
-        if(!defined('LUTHIER_TEST_MODE') && $config['APP_ENV'] == 'development')
-        {
-            
+        if (! defined('LUTHIER_TEST_MODE') && $config['APP_ENV'] == 'development') {
+
             $this->whoops = new \Whoops\Run();
-            
-            $handler = !$this->isCli()
-                ? new \Whoops\Handler\PrettyPageHandler()
-                : new \Whoops\Handler\PlainTextHandler();
-            
+
+            $handler = ! $this->isCli() ? new \Whoops\Handler\PrettyPageHandler() : new \Whoops\Handler\PlainTextHandler();
+
             $this->whoops->pushHandler($handler);
-            
         }
-        
-        set_error_handler([$this, 'errorHandler']);
-        set_exception_handler([$this, 'exceptionHandler']);
-        register_shutdown_function([$this, 'shutdownHandler']);
-        
+
+        set_error_handler([$this,'errorHandler']);
+        set_exception_handler([$this,'exceptionHandler']);
+        register_shutdown_function([$this,'shutdownHandler']);
+
         // We need to know the application current working directory. By default,
         // it's the value returned by the getcwd() function, unless it has been defined as the
-        //'APP_PATH' parameter in the container or provided in the class constructor
-        if(!$this->container->has('APP_PATH') || ($this->container->has('APP_PATH') && empty($this->container->get('APP_PATH'))))
-        {
-            $this->container->parameter('APP_PATH',$this->appPath);
+        // 'APP_PATH' parameter in the container or provided in the class constructor
+        if (! $this->container->has('APP_PATH') || ($this->container->has('APP_PATH') && empty($this->container->get('APP_PATH')))) {
+            $this->container->parameter('APP_PATH', $this->appPath);
         }
-        
-        self::$template = $this->container->get('template'); 
+
+        self::$template = $this->container->get('template');
     }
-    
+
     /**
      * Runs the application
      *
      * @return void
      */
     public function run()
-    {     
+    {
         $this->configure();
-        
+
         $this->logger->debug('Luthier Framework v' . self::VERSION . ' (PHP ' . phpversion() . ') APP_PATH="' . $this->container->get('APP_PATH') . '"', ['CORE']);
-        
-        if(!$this->isCli())
-        {
+
+        if (! $this->isCli()) {
             $this->runHttp();
-        }
-        else
-        {
+        } else {
             $this->runCli();
         }
     }
-    
+
     /**
      * Runs the application in HTTP mode
      */
     private function runHttp()
     {
         $requestHandler = $this->container->get('request_handler');
-        
-        if(!empty($this->container->get('APP_CACHE')))
-        {
+
+        if (! empty($this->container->get('APP_CACHE'))) {
             $cacheFolder = $this->container->get('APP_PATH') . '/' . $this->container->get('APP_CACHE');
-            
-            if(!file_exists($cacheFolder))
-            {
+
+            if (! file_exists($cacheFolder)) {
                 mkdir($cacheFolder . '/http', null, true);
             }
-            
+
             $this->logger->debug('HttpKernel cache folder set to "' . $cacheFolder . '/http"', ['CORE']);
-            
-            $requestHandler = new HttpKernel\HttpCache\HttpCache($requestHandler,
-                new HttpKernel\HttpCache\Store($cacheFolder . '/http')
-            );
+
+            $requestHandler = new HttpKernel\HttpCache\HttpCache($requestHandler, new HttpKernel\HttpCache\Store($cacheFolder . '/http'));
         }
-        
+
         $requestHandler->handle($this->sfRequest)->send();
     }
-    
+
     /**
      * Runs the application in CLI mode
      */
     private function runCli()
     {
         $commandLoader = new FactoryCommandLoader($this->container->get('router')->getCommands());
-        $application   = new Application();
+        $application = new Application();
         $application->setCommandLoader($commandLoader);
         $application->run();
     }
-    
 }
 

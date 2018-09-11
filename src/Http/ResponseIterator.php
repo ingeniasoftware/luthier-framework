@@ -55,11 +55,11 @@ class ResponseIterator
     /**
      * Iterates over the provided request stack
      * 
-     * @param array      $stack      Request stack
-     * @param callable   $callback   Route callback
-     * @param array      $arguments  Route arguments
-     * @param Request    $request    Luthier request
-     * @param Response   $response   Luthier response
+     * @param array     $stack     Request stack
+     * @param callable  $callback  Route callback
+     * @param array     $arguments Route arguments
+     * @param Request   $request   Luthier request
+     * @param Response  $response  Luthier response
      * 
      * @return \Symfony\Component\HttpFoundation\Response|mixed
      */
@@ -70,16 +70,12 @@ class ResponseIterator
         self::$stack    = $stack;
         self::$callback = [$callback, $arguments];   
         
-        if(count($stack) > 0)
-        {      
+        if(count($stack) > 0){      
             $middleware = self::getMiddleware(self::$stack[0]);
-            
             Response::getRealResponse($middleware($request, $response, function($request, $response){
                 return \Luthier\Http\ResponseIterator::next($request, $response);
             }), $response);
-        }
-        else
-        {
+        } else{
             Response::getRealResponse($callback(...$arguments), $response);
         }
     }
@@ -108,20 +104,16 @@ class ResponseIterator
      */
     public static function next(Request $request, Response $response)
     {
-        if($response->getResponse() instanceof RedirectResponse)
-        {
+        if($response->getResponse() instanceof RedirectResponse){
             return;
         }
 
         $middleware = self::iterate();
 
-        if($middleware === NULL)
-        {
+        if($middleware === NULL){
             [$callback, $arguments] = self::$callback;
             return $callback(...$arguments);
-        }
-        else
-        {
+        } else {
             $middleware = self::getMiddleware($middleware);
             return $middleware($request, $response, function($request,$response){
                 return \Luthier\Http\ResponseIterator::next($request, $response);

@@ -13,7 +13,12 @@ namespace Luthier\Http;
 
 use Psr\Container\ContainerInterface;
 use Symfony\Component\HttpFoundation\Response as SfResponse;
-use Symfony\Component\HttpFoundation\{RedirectResponse, JsonResponse, StreamedResponse, BinaryFileResponse};
+use Symfony\Component\HttpFoundation\ {
+    RedirectResponse,
+    JsonResponse,
+    StreamedResponse,
+    BinaryFileResponse
+};
 
 /**
  * Wrapper of the Symfony Response object with useful methods and shortcuts
@@ -23,22 +28,23 @@ use Symfony\Component\HttpFoundation\{RedirectResponse, JsonResponse, StreamedRe
  */
 class Response implements ResponseInterface
 {
+
     /**
      * @var \Symfony\Component\HttpFoundation\Response
      */
     protected $response;
-    
+
     /**
      * @var RequestInterface
      */
     protected $request;
-    
+
     /**
      * 
      * @var \Psr\Container\ContainerInterface;
      */
     protected $container;
-    
+
     /**
      * @var \Luthier\Routing\RouteBuilder;
      */
@@ -50,10 +56,10 @@ class Response implements ResponseInterface
     public function __construct(ContainerInterface $container)
     {
         $this->container = $container;
-        $this->request   = $container->get('request');
-        $this->router    = $container->get('router');
+        $this->request = $container->get('request');
+        $this->router = $container->get('router');
     }
-    
+
     /**
      * {@inheritDoc}
      * 
@@ -63,7 +69,7 @@ class Response implements ResponseInterface
     {
         return $this->response;
     }
-    
+
     /**
      * {@inheritDoc}
      * 
@@ -71,22 +77,22 @@ class Response implements ResponseInterface
      */
     public function setResponse(SfResponse $response = null)
     {
-        $this->response =  $response ?? new SfResponse();
+        $this->response = $response ?? new SfResponse();
         return $this;
     }
 
     public function __call($method, $args)
     {
-        if(method_exists($this->response, $method) )
-        {
-            return call_user_func_array([$this->response, $method], $args);
-        }
-        else
-        {
-           throw new \BadMethodCallException ("Call to undefined method Response::{$method}()");
+        if (method_exists($this->response, $method)) {
+            return call_user_func_array([
+                $this->response,
+                $method
+            ], $args);
+        } else {
+            throw new \BadMethodCallException("Call to undefined method Response::{$method}()");
         }
     }
-    
+
     /**
      * Updates the internal Symfony Response object of this class if the 
      * provided response is an instance of a Symfony Response too
@@ -100,8 +106,7 @@ class Response implements ResponseInterface
      */
     public static function getRealResponse($responseResult, self $masterResponse)
     {
-        if($responseResult instanceof SfResponse)
-        {
+        if ($responseResult instanceof SfResponse) {
             $masterResponse->setResponse($responseResult);
         }
     }
@@ -113,10 +118,10 @@ class Response implements ResponseInterface
      */
     public function json($data, int $status = 200, array $headers = [])
     {
-        $this->response = new JsonResponse(is_array($data) ? json_encode($data) : $data, $status, $headers, !is_string($data));
+        $this->response = new JsonResponse(is_array($data) ? json_encode($data) : $data, $status, $headers, ! is_string($data));
         return $this;
     }
-    
+
     /**
      * {@inheritDoc}
      * 
@@ -135,16 +140,15 @@ class Response implements ResponseInterface
      */
     public function redirect(string $url, int $status = 302, array $headers = [])
     {
-        if(substr($url,0,7) !== 'http://' && substr($url, 0,8) !== 'https://')
-        {
+        if (substr($url, 0, 7) !== 'http://' && substr($url, 0, 8) !== 'https://') {
             $url = $this->request->baseUrl() . '/' . trim($url, '/');
         }
 
         $this->response = new RedirectResponse($url, $status, $headers);
-        
+
         return $this;
     }
- 
+
     /**
      * {@inheritDoc}
      * 
@@ -152,13 +156,9 @@ class Response implements ResponseInterface
      */
     public function routeRedirect(string $route, array $params = [], int $status = 302, array $headers = [])
     {
-        return $this->redirect(
-            $this->router->getRouteByName($route, $params),
-            $status,
-            $headers
-        );
+        return $this->redirect($this->router->getRouteByName($route, $params), $status, $headers);
     }
-    
+
     /**
      * Sets the response to a streamed response
      *
@@ -173,17 +173,17 @@ class Response implements ResponseInterface
         $this->response = new StreamedResponse($callback, $status, $headers);
         return $this;
     }
-    
+
     /**
      * Sets the response to a file stream response
      *
-     * @param mixed   $file                 File that will be streamed
-     * @param int     $status               HTTP status code
-     * @param array   $headers              Additional HTTP headers
-     * @param bool    $public               Set the file as public
-     * @param string  $contentDisposition   File content disposition
-     * @param bool    $autoEtag             Add E-Tag automatically
-     * @param bool    $autoLastModified     Set the Last Modified property automatically
+     * @param mixed   $file               File that will be streamed
+     * @param int     $status             HTTP status code
+     * @param array   $headers            Additional HTTP headers
+     * @param bool    $public             Set the file as public
+     * @param string  $contentDisposition File content disposition
+     * @param bool    $autoEtag           Add E-Tag automatically
+     * @param bool    $autoLastModified   Set the Last Modified property automatically
      *
      * @return self
      */

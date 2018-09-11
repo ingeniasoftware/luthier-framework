@@ -21,31 +21,32 @@ use Symfony\Component\EventDispatcher\Event;
  */
 class PreControllerEvent extends Event
 {
+
     /**
      * @var ContainerInterface
      */
     private $container;
-    
+
     /**
      * @var array
      */
     private $middlewareStack;
-    
+
     /**
      * @var callable
      */
     private $callback;
-    
+
     /**
      * @var array
      */
     private $arguments;
-    
+
     /**
-     * @param ContainerInterface  $container
-     * @param array               $middlewareStack
-     * @param callable            $callback
-     * @param array               $arguments
+     * @param ContainerInterface $container
+     * @param array              $middlewareStack
+     * @param callable           $callback
+     * @param array              $arguments
      */
     public function __construct(ContainerInterface $container, array &$middlewareStack, callable &$callback, array &$arguments)
     {
@@ -54,7 +55,7 @@ class PreControllerEvent extends Event
         $this->callback = &$callback;
         $this->arguments = &$arguments;
     }
-    
+
     /**
      * @return \Luthier\Http\Request
      */
@@ -70,7 +71,7 @@ class PreControllerEvent extends Event
     {
         return $this->container->get('response');
     }
-    
+
     /**
      * @return ContainerInterface
      */

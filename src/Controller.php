@@ -1,5 +1,6 @@
 <?php
 
+
 /*
  * Luthier Framework
  *
@@ -24,6 +25,7 @@ use Luthier\Http\Response;
  */
 class Controller
 {
+
     /**
      * @var \Pimple\Psr11\Container
      */
@@ -43,7 +45,7 @@ class Controller
      * @var \Luthier\Routing\Route
      */
     protected $route;
-    
+
     /**
      * Controller init
      * 
@@ -64,7 +66,7 @@ class Controller
         $this->route = $route;
         return $this;
     }
-    
+
     /**
      * __get() magic method
      * 
@@ -75,13 +77,10 @@ class Controller
      * @return mixed
      */
     public function __get($property)
-    {        
-        if($this->container->has($property))
-        {
+    {
+        if ($this->container->has($property)) {
             return $this->container->get($property);
-        }
-        else
-        {
+        } else {
             throw new \Exception("Trying to get undefined property $property");
         }
     }
@@ -95,7 +94,7 @@ class Controller
      * @return string
      */
     public function route(string $name, array $params = [])
-    {        
+    {
         return $this->container->get('router')->getRouteByName($name, $params);
     }
 }

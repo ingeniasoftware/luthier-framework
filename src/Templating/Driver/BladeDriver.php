@@ -24,6 +24,7 @@ use Illuminate\View\ViewServiceProvider;
  */
 class BladeDriver implements TemplateDriverInterface
 {
+
     /**
      * @var ContainerInterface
      */
@@ -33,104 +34,96 @@ class BladeDriver implements TemplateDriverInterface
      * @var \Illuminate\Container\Container
      */
     protected $illuminateContainer;
-    
+
     /**
      * @var array
      */
     protected $globals = [];
-    
+
     /**
      * @var array
      */
     protected $functions = [];
-    
+
     /**
      * @var array
      */
     protected $directories = [];
-    
+
     /**
      * @var \Illuminate\View\Factory
      */
     protected $blade;
-    
+
     /**
      * @var \Illuminate\View\Engines\CompilerEngine
      */
     protected $engine;
-    
+
     /**
      * @var bool
      */
     protected $booted = false;
-    
+
     /**
      * @param ContainerInterface $container
      */
     public function __construct(ContainerInterface $container)
     {
-        $this->container     = $container; 
+        $this->container = $container;
         $this->directories[] = $container->get('APP_PATH') . '/' . $container->get('TEMPLATE_DIR');
     }
-    
+
     private function boot()
     {
-        if($this->booted)
-        {
-            return; 
+        if ($this->booted) {
+            return;
         }
         $this->booted = true;
-        
+
         $directories = $this->directories;
-        $cache =  !empty($this->container->get('APP_CACHE'))
-            ? $this->container->get('APP_PATH') . '/' . $this->container->get('APP_CACHE') . '/templates'
-            : false;
-            
-        if(!file_exists($cache))
-        {
+        $cache = ! empty($this->container->get('APP_CACHE')) ? $this->container->get('APP_PATH') . '/' . $this->container->get('APP_CACHE') . '/templates' : false;
+
+        if (! file_exists($cache)) {
             mkdir($config['cache'], null, true);
         }
-            
+
         $illuminateContainer = new Container();
-        
-        $illuminateContainer->bindIf('files', function() {
+
+        $illuminateContainer->bindIf('files', function () {
             return new Filesystem();
         }, true);
-                
-        $illuminateContainer->bindIf('events', function() {
+
+        $illuminateContainer->bindIf('events', function () {
             return new Dispatcher();
         }, true);
-                    
-        $illuminateContainer->bindIf('config', function() use($directories, $cache) {
-            return [
-                'view.paths'    => $directories,
-                'view.compiled' => $cache,
-            ];
+
+        $illuminateContainer->bindIf('config', function () use ($directories, $cache) {
+            return ['view.paths' => $directories,'view.compiled' => $cache];
         }, true);
-                        
+
         (new ViewServiceProvider($illuminateContainer))->register();
-        
+
         $this->illuminateContainer = $illuminateContainer;
-        $this->blade  = $this->illuminateContainer['view'];
+        $this->blade = $this->illuminateContainer['view'];
         $this->engine = $this->illuminateContainer->make('view.engine.resolver')->resolve('blade');
-        
+
         $instance = &$this;
-        
+
         //
         // "$_" variable
         //
         // Lambda function used for invoke other registered functions
         // for this template engine.
         //
-        $this->globals['_'] = function($name, ...$args) use($instance){
-            if(isset($instance->functions[$name]))
-            {
+        $this->globals['_'] = function ($name, ...$args) use ($instance) {
+            if (isset($instance->functions[$name])) {
                 return $instance->functions[$name](...$args);
             }
             throw new \Exception("Call to undefined template function $name()");
         };
     }
-            
+
     /**
      * {@inheritDoc}
      * 
@@ -148,7 +141,7 @@ class BladeDriver implements TemplateDriverInterface
      */
     public function addGlobal(string $name, $value)
     {
-        $this->globals[$name] = $value; 
+        $this->globals[$name] = $value;
     }
 
     /**
@@ -158,7 +151,7 @@ class BladeDriver implements TemplateDriverInterface
      */
     public function addFilter(string $name, callable $callback, bool $rawHtml = false)
     {
-        $this->addFunction($name, $callback); 
+        $this->addFunction($name, $callback);
     }
 
     /**
@@ -178,15 +171,14 @@ class BladeDriver implements TemplateDriverInterface
      */
     public function render(string $template, array $vars = [], bool $return = false)
     {
-        $this->boot();      
-        
+        $this->boot();
+
         $view = $this->blade->make($template, array_merge($vars, $this->globals), [])->render();
-        
-        if(!$return)
-        {
+
+        if (! $return) {
             $this->container->get('response')->write($view);
         }
-        
+
         return $view;
     }
 }
