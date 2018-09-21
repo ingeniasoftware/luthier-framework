@@ -80,6 +80,7 @@ class BladeDriver implements TemplateDriverInterface
             return;
         }
         $this->booted = true;
+        $config = [];
 
         $directories = $this->directories;
         $cache = ! empty($this->container->get('APP_CACHE')) ? $this->container->get('APP_PATH') . '/' . $this->container->get('APP_CACHE') . '/templates' : false;

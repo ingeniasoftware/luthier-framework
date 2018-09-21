@@ -92,6 +92,11 @@ class Container
             'service',
             \Luthier\Templating\Template::class,
             []
+        ],
+        'validator' => [
+            'service',
+            \Luthier\Validator::class,
+            []
         ]
     ];
 

@@ -82,6 +82,10 @@ class Template
         $this->driver->addFunction('url', function ($url = '') use ($container) {
             return call_user_func_array([$this->container->get('request'),'baseUrl'], [$url]);
         });
+        
+        $this->driver->addFunction('validation_errors', function($field = null) use($container){
+            return call_user_func_array([$container->get('validator'), 'getValidationErrors'], $field);
+        });
     }
 
     public function __call($method, $args)
