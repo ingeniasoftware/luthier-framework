@@ -8,6 +8,7 @@
  * This file is part of the Luthier Framework. See the LICENSE file for copyright
  * information and license details
  */
+
 namespace Luthier\Routing;
 
 /**
@@ -62,9 +63,10 @@ final class RouteParam
      *
      * @var string[]
      */
-    private static $placeholderPatterns = ['{num:[a-zA-Z0-9-_]*(\?}|})' => '(:num)', // (:num) route
-    '{any:[a-zA-Z0-9-_]*(\?}|})' => '(:any)', // (:any) route
-    '{[a-zA-Z0-9-_]*(\?}|})' => '(:any)' // Everything else
+    private static $placeholderPatterns = [
+        '{num:[a-zA-Z0-9-_]*(\?}|})' => '(:num)', // (:num) route
+        '{any:[a-zA-Z0-9-_]*(\?}|})' => '(:any)', // (:any) route
+        '{[a-zA-Z0-9-_]*(\?}|})' => '(:any)' // Everything else
     ];
 
     /**
@@ -72,7 +74,10 @@ final class RouteParam
      *
      * @var string[]
      */
-    private static $placeholderReplacements = ['/\(:any\)/' => '[^/]+','/\(:num\)/' => '[0-9]+'];
+    private static $placeholderReplacements = [
+        '/\(:any\)/' => '[^/]+',
+        '/\(:num\)/' => '[0-9]+'
+    ];
 
     /**
      * Gets the placeholder -> regex conversion array
@@ -90,7 +95,6 @@ final class RouteParam
     public function __construct(string $segment)
     {
         $this->segment = $segment;
-        $customRegex = false;
 
         $matches = [];
 

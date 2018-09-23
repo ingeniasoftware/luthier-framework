@@ -8,23 +8,27 @@
  * This file is part of the Luthier Framework. See the LICENSE file for copyright
  * information and license details
  */
-namespace Luthier;
+
+namespace Luthier\Validator;
 
 use Psr\Container\ContainerInterface;
 use Symfony\Component\Validator\Validation;
+use Symfony\Component\Validator\ConstraintViolationList;
 use Symfony\Component\Validator\Constraints;
 use Symfony\Component\Validator\ConstraintViolation;
 use Symfony\Component\Translation\Translator;
 use Symfony\Component\Translation\Loader\XliffFileLoader;
+use Luthier\Http\Request;
 
 /**
- * Simple yet effective validator. It's based on Symfony Validator component
+ * Luthier Framework validator
  *
  * @author <anderson@ingenia.me>
  */
 class Validator
 {
-
+    const OPERATORS = ['>=', '<=', '>', '<', '===', '==', '!==', '!='];
+    
     /**
      * @var ContainerInterface
      */
@@ -56,23 +60,34 @@ class Validator
     public function __construct(ContainerInterface $container)
     {
         $this->container = $container;
-        $locale = $this->container->has('APP_LOCALE') ? $this->container->get('APP_LOCALE') : 'en';
-        $validator = Validation::createValidatorBuilder();
+        $locale = $this->container->has('APP_LANG') ? $this->container->get('APP_LANG') : 'en';
         
         $translator = $this->container->has('translator')
             ? $this->container->get('translator')
             : new Translator($locale);
         
         $translator->addLoader('xlf', new XliffFileLoader());
-        $translator->addResource('xlf', realpath( __DIR__ . '/../vendor/symfony/validator/Resources/translations/validators.' . $locale . '.xlf'), $locale);
-        
-        $validator->setTranslator($translator); 
-        $validator->setTranslationDomain('validators');
-        
-        $this->validator = $validator->getValidator();
+        $translator->addResource('xlf', realpath( __DIR__ . '/../../vendor/symfony/validator/Resources/translations/validators.' . $locale . '.xlf'), $locale, "validators");
         $this->translator = $translator;
+
+        $this->reset();
     }
 
+    /**
+     * Resets the validator
+     * 
+     * @return void
+     */
+    public function reset()
+    {
+        $validator = Validation::createValidatorBuilder();
+        $validator->setTranslator($this->translator);
+        $validator->setTranslationDomain('validators');
+        $this->validator = $validator->getValidator();  
+        $this->rules = [];
+        $this->validationErrors = [];
+    }
+    
     /**
      * Adds a new validation rule to the validator
      *
@@ -80,7 +95,7 @@ class Validator
      * @param string|array  $constraints
      * @param string[]      $messages
      *
-     * @return \Luthier\Validator
+     * @return self
      */
     public function rule(string $field, $constraints, array $messages = [])
     {
@@ -107,69 +122,134 @@ class Validator
     /**
      * Runs the validator
      * 
-     * Returns NULL if none constraints violations occurred, or an array
-     * with the validation errors otherwise
+     * Returns TRUE if no constraints violations occurred, FALSE instead
      * 
-     * @param array $data
-     * @param array $constraints
+     * @param array $data        Data to be validated      
+     * @param array $constraints Constraints
+     * @param bool  $bailAll     Stop on first constraint error on each field?
      * 
-     * @return NULL|array
+     * @return bool
      */
-    public function validate($data = [], array $constraints = [])
+    public function validate($data = [], array $constraints = [], bool $bailAll = false)
     {
-        if($data instanceof Http\Request){
+        if(!is_array($data) && (!($data instanceof Request))){
+            throw new \InvalidArgumentException('Validation data must be an array or an instance of ' . Request::class);
+        }
+        
+        if($data instanceof Request){
             $data = $data->getRequest()->request->all();
         }
         
         $validationErrors = [];
         
-        if(!empty($constraints)){
-            foreach($constraints as $field => $validation){
-                if(is_string($validation)){
+        if (!empty($constraints)) {
+            foreach ($constraints as $field => $validation) {
+                if (is_array($validation)) {
+                    $rules = $validation[0];
+                    $messages = $validation[1] ?? [];
+                } else {
                     $rules = $validation;
                     $messages = [];
-                } else {
-                    if (is_array($validation)) {
-                        $rules = $validation[0];
-                        $messages = $validation[1] ?? [];
-                    } else {
-                        throw new \InvalidArgumentException("Invalid validation constraints definition: must be a string or an array of constraints/error messages");
-                    }
                 }
-                $this->rule($field,$rules,$messages); 
+                $this->rule($field,$rules,$messages);
             }
         }
 
         foreach ($this->rules as [
             $field,
-            $constraints,
+            $rules,
             $messages
         ]) {
             $this->messages = $messages;
-            $rules = [];
             $required = false;
             $matches = null;
+            $nullable = false;
+            $sfRules = [];
+            $bail = $bailAll;
+            $error = false;
 
-            if (is_string($constraints)) {
-                $constraints = explode('|', $constraints);
+            if (is_string($rules)) {
+                $rules = explode('|', $rules);
             }
 
-            foreach ($constraints as $rule) {
-                if ($rule === 'required') {
+            foreach ($rules as $name => $params) {
+                if(is_string($params) && is_int($name)){
+                    // String based constraint definition:
+                    $name = $params;  
+                    if (count(explode(':', $name)) > 1) {
+                        [
+                            $name,
+                            $params
+                        ] = explode(':', $name);
+                        $params = explode(',', $params);   
+                    } else {
+                        
+                        $isOperator = false;
+                        
+                        foreach(self::OPERATORS as $operator){                    
+                            if(count(explode($operator, $name)) > 1){
+                                $params = explode($operator, $name);
+                                $params = [ $params[1] ];
+                                $name = $operator;
+                                $isOperator = true;
+                                break;
+                            }
+                        }    
+                        
+                        if(!$isOperator){
+                            $params = [];
+                        }
+                    }
+                } else {   
+                    // Array based constraint definition:
+                    if (is_scalar($params) || is_array($params)) {
+                        if (is_scalar($params)) {
+                            $params = [$params];
+                        } 
+                    } else {
+                        $params = []; 
+                    }
+                }
+                
+                // Special 'required' pseudo-constraint
+                if ($name === 'required') {
                     $required = true;
                     continue;
                 }
-                if (count(explode('matches:', $rule)) == 2 ){
-                    [, $matches] = explode('matches:', $rule);
+                                
+                // Special 'matches' pseudo-constraint
+                if ($name === 'matches' && isset($params[0]) && is_string($params[0])){
+                    $matches = $params[0]; 
                     continue;
                 }
-                $rules[] = $this->parseRule($rule, $messages[$field] ?? null);
+                
+                // Is a nullable field?
+                if ($name === 'nullable') {
+                    $nullable = true;
+                    continue;
+                }
+                
+                // The validation must stop at first error?
+                if ($name === 'bail') {
+                    $bail = true;
+                    continue;
+                }
+                     
+                // Get the actual Symfony Constraint object
+                $sfRules[] = $this->getSfConstraint($name, $params, $messages[$name] ?? null);
             }
-
-            $violations = $this->validator->validate($data[$field] ?? null, $rules);
+            
+            if ($required && !$nullable) {
+                $sfRules[] = $this->getSfConstraint('not_blank', [], $messages[$name] ?? null);
+                $sfRules[] = $this->getSfConstraint('not_null', [], $messages[$name] ?? null);
+            }
+                        
+            $violations = new ConstraintViolationList(); 
             
             if ($required && ! isset($data[$field])) {
-                $translatedError = $this->translator->trans("This field is missing.");
+                $error = true;
+                $errorMessage = $messages['required'] ?? "This field is missing.";
+                $translatedError = $this->translator->trans($errorMessage, [], "validators");
                 $violations->add(new ConstraintViolation(
                     $translatedError, 
                     $translatedError, 
@@ -182,48 +262,64 @@ class Validator
                     new Constraints\Required())
                 );
             }
-            
-            if ($matches !== null && (!isset($data[$matches]) || $data[$matches] != $matches)) {
-                $translatedError = $this->translator->trans("This value should be equal to {{ compared_value }}.");
+                      
+            if ($matches !== null && (!isset($data[$matches]) || !isset($data[$field]) || $data[$matches] != $data[$field]) && (!$bail || ($bail && !$error))) {
+                $error = true;
+                $errorMessage = $messages['matches'] ?? "This value should be equal to {{ compared_value }}.";
                 $violations->add(new ConstraintViolation(
-                    $translatedError,
-                    $translatedError,
-                    ['{{ compared_value }}' => $data[$matches] ?? null],
-                    null,
+                    $this->translator->trans($errorMessage, ["{{ compared_value }}" => '[' . $matches . ']'], "validators"),
+                    $this->translator->trans($errorMessage, [], "validators"),
+                    [
+                        "{{ value }}" => $data[$field] ?? null, 
+                        "{{ compared_value }}" => $data[$matches] ?? null, 
+                        "{{ compared_value_type }}" => "string"
+                    ],
+                    $data[$field] ?? null,
                     null, 
-                    $matches,
+                    $data[$field] ?? null,
                     null,
                     null,
                     new Constraints\EqualTo($matches))
                 );
             }
             
+            if(!$bail || ($bail && !$error))
+            {
+                foreach ($sfRules as $sfRule) {
+                    $violation = $this->validator->validate($data[$field] ?? null, $sfRule);
+                    $violations->addAll($violation);
+                    if (!empty($violation) && $bail) {
+                        break;
+                    }
+                }
+            }
+
             foreach ($violations as $violation) {
-                $rule = explode('\\', get_class($violation->getConstraint()));
                 $validationErrors[$field][] = $violation->getMessage();
             }
         }
          
         $this->validationErrors = $validationErrors;
-        $this->rules = null;
 
         return empty($validationErrors);
     }
     
     /**
-     * Same as validate(), but throws an exception if a constraint violatio
-     * occurs
+     * Same as validate(), but throws an exception if a constraint violation
+     * occurs 
      * 
-     * @param array $data
+     * @param array $data        Data to be validated      
+     * @param array $constraints Constraints
+     * @param bool  $bailAll     Stop on first constraint error on each field?
      * 
      * @throws \Exception
      * 
      * @return void
      */
-    public function validateOrFail($data = [], array $constraints = [])
+    public function validateOrFail($data = [], array $constraints = [], bool $bailAll = false)
     {
-        if($this->validate($data, $constraints) !== true){
-            throw new \Exception("Validation error: one or more constraint violations occurred with the submited data");
+        if($this->validate($data, $constraints, $bailAll) !== true){
+            throw new Exception\ValidationConstraintException("One or more constraint violations occurred with the submited data");
         }
     }
     
@@ -242,52 +338,32 @@ class Validator
     }
 
     /**
-     * Compiles the rule string to a Symfony validator's constraint 
+     * Compiles the given rule and parameters to a Symfony validator's constraint 
      * 
      * @param string $name
+     * @param array  $params
      * @param string $message
      * 
      * @return \Symfony\Component\Validator\Constraint
      */
-    private function parseRule($name, $message)
-    {
-        $operators = ['>=', '<=', '>', '<', '===', '==', '!==', '!='];
-        
-        if (count(explode(':', $name)) > 1) {
-            
-            [
-                $name,
-                $params
-            ] = explode(':', $name);
-            $params = explode(',', $params);  
-            
-        } else {
-            
-            $isOperator = false;
-            
-            foreach($operators as $operator){
-                
-                if(count(explode($operator, $name)) > 1){
-                    $params = explode($operator, $name);
-                    $params = [ $params[1] ];
-                    $name = $operator;
-                    $isOperator = true;
-                    break;
-                }
-                
-            }
-            
-            if(!$isOperator){
-                $params = [];
-            }
-        }
-        
+    private function getSfConstraint(string $name, array $params, ?string $message)
+    {        
         $constraint = null;
-
-        //
-        // Symfony Validator's constraints instances
-        // 
+        
+        // Constraint instances
         switch ($name) {
+            /*
+             * (Not) Blank validation
+             */
+            case 'not_blank':
+                $constraint = new Constraints\NotBlank();
+                break;
+            /*
+             * (Not) Null validation
+             */
+            case 'not_null':
+                $constraint = new Constraints\NotNull();
+                break;
             /*
              * Regex validation
              */
@@ -322,7 +398,7 @@ class Validator
              * Email validation 
              */
             case 'email':  
-                $constraint = new Constraints\Email($params[0]);
+                $constraint = new Constraints\Email();
                 break;
             /*
              * Numeric integer validation
@@ -421,30 +497,36 @@ class Validator
                 throw new \Exception('Unknown validation rule "' . $name . '"');
         }
         
-        //
-        // Constraints translated error messages
-        //
+        // Translated error messages
         switch ($name) {
             case 'range':
                 $translatedMessage = $this->translator->trans(
-                    !empty($message) ? $message : $constraint->minMessage
+                    !empty($message) ? $message : $constraint->minMessage,
+                    [],
+                    "validators"
                 );
                 $constraint->minMessage = $translatedMessage;
                 $constraint->maxMessage = $translatedMessage;
                 break;
             case 'min_length':
                 $constraint->minMessage = $this->translator->trans(
-                    !empty($message) ? $message : $constraint->minMessage
+                    !empty($message) ? $message : $constraint->minMessage,
+                    [],
+                    "validators"
                 );
                 break;
             case 'max_length':
                 $constraint->maxMessage = $this->translator->trans(
-                    !empty($message) ? $message : $constraint->maxMessage
+                    !empty($message) ? $message : $constraint->maxMessage,
+                    [],
+                    "validators"
                 );
                 break;
             default:
                 $constraint->message = $this->translator->trans(
-                    !empty($message) ? $message : $constraint->message
+                    !empty($message) ? $message : $constraint->message,
+                    [],
+                    "validators"
                 );
         }
        

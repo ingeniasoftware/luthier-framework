@@ -17,7 +17,7 @@ use Monolog\Handler\StreamHandler;
 use Monolog\Formatter\LineFormatter;
 
 /**
- * Simple Monolog logger for Luthier Framework
+ * Monolog wrapper for Luthier Framework
  * 
  * @author Anderson Salas <anderson@ingenia.me>
  */
@@ -39,7 +39,12 @@ class Logger extends MonologLogger
 
             $this->name = $container->get('APP_NAME');
 
-            $handler = new StreamHandler($log, $container->get('APP_ENV') == 'development' ? MonologLogger::DEBUG : MonologLogger::ERROR);
+            $handler = new StreamHandler(
+                $log, 
+                $container->get('APP_ENV') == 'development' 
+                    ? MonologLogger::DEBUG 
+                    : MonologLogger::ERROR
+            );
             $handler->setFormatter(new LineFormatter(null, null, true, true));
 
             $this->handlers = [$handler];

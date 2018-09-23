@@ -146,7 +146,7 @@ class Request implements RequestInterface
      */
     public function baseUrl(string $url = '') : string
     {
-        if($this->container->get('APP_URL') !== null){
+        if ($this->container->get('APP_URL') !== null) {
             return $this->container->get('APP_URL') . '/' . trim($url, '/');
         }
 

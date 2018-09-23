@@ -14,7 +14,7 @@ namespace Luthier\Http\Middleware;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
- * Middleware that rejects the access to a route under non-AJAX requests
+ * Middleware that rejects routes under non-AJAX requests
  * 
  * @author Anderson Salas <anderson@ingenia.me>
  */

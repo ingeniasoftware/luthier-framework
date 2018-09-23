@@ -119,7 +119,7 @@ class RequestHandler implements HttpKernelInterface
         $match['request'] = $this->request;
         $match['response'] = $this->response;
 
-        foreach ($this->container->get('PRIVATE_SERVICES') as [
+        foreach ($this->container->get('@PRIVATE_SERVICES') as [
             $name,
             $class
         ]) {
@@ -262,14 +262,14 @@ class RequestHandler implements HttpKernelInterface
      */
     private function handleException(?Route $route, \Exception $exception)
     {
-        $errorCallback = $this->router->getErrorCallback();
+        $errorHandler = $this->router->getErrorHandler();
 
-        if ($errorCallback !== NULL) {
-            Response::getRealResponse(call_user_func_array($errorCallback, [
+        if ($errorHandler !== NULL) {
+            Response::getRealResponse(call_user_func_array($errorHandler, [
+                $exception,
                 $this->request,
                 $this->response,
-                $route,
-                $exception
+                $route
             ]), $this->response);
 
             $this->logger->error(get_class($exception) . ':' . $exception->getMessage(), [

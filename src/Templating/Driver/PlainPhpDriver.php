@@ -14,8 +14,7 @@ namespace Luthier\Templating\Driver;
 use Psr\Container\ContainerInterface;
 
 /**
- * Simple yet minimalist plain PHP template driver. Provides basic templating 
- * capabilities out-of-the-box such inheritance and blocks/placeholders. 
+ * Basic built-in template driver
  * 
  * @author Anderson Salas <anderson@ingenia.me> 
  */

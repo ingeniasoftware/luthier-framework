@@ -8,6 +8,7 @@
  * This file is part of the Luthier Framework. See the LICENSE file for copyright
  * information and license details
  */
+
 namespace Luthier\Routing;
 
 use Psr\Container\ContainerInterface;
@@ -22,7 +23,9 @@ use Symfony\Component\Routing\Generator\UrlGenerator;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 /**
- * Abstraction of the Symfony Router component. Contains methods to define new routes
+ * Luthier Framework own abstraction of the Symfony Router component. Offers a easy 
+ * and user-friendly way to define new routes by using a few methods:
+ * 
  *   - get()
  *   - post()
  *   - patch()
@@ -37,9 +40,6 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
  * The Route Builder also stores the callbacks what will be invoked when an application
  * error/exception occurs.
  * 
- * At application run, all routes will be compiled to Symfony Route objects when the Request Handler
- * calls the getRoutes() method.
- * 
  * @author Anderson Salas <anderson@ingenia.me>
  */
 class RouteBuilder implements RouteBuilderInterface
@@ -53,11 +53,20 @@ class RouteBuilder implements RouteBuilderInterface
     protected $container;
 
     /**
-     * Route builder context
-     *
      * @var array $context
      */
-    protected static $context = ['middleware' => ['route' => [],'global' => [],'alias' => []],'namespace' => [],'prefix' => [],'params' => [],'host' => [],'schemes' => []];
+    protected static $context = [
+        'middleware' => [
+            'route'  => [],
+            'global' => [],
+            'alias'  => []
+        ],
+        'namespace' => [],
+        'prefix'  => [],
+        'params'  => [],
+        'host'    => [],
+        'schemes' => []    
+    ];
 
     /**
      * @var Command[] $commands
@@ -90,25 +99,25 @@ class RouteBuilder implements RouteBuilderInterface
     protected $requestContext;
 
     /**
-     * Callback to be invoked when a HTTP 404 error occurs
+     * HTTP/1.1 404: Not Found error callback
      * 
      * @var callable $httpNotFoundCallback
      */
     protected $httpNotFoundCallback;
 
     /**
-     * Callback to be invoked when a HTTP 405 error occurs
+     * HTTP/1.1 404: Method Not Allowed error callback
      *
      * @var callable $httpNotAllowedCallback
      */
     protected $httpMethodNotAllowedCallback;
 
     /**
-     * Callback to be invoked when a general error/exception occurs
+     * Error Handler used by the Request Handler (HttpKernel)
      *
      * @var callable $errorCallback
      */
-    protected $errorCallback;
+    protected $errorHandler;
 
     /**
      * @var \Luthier\Routing\Route
@@ -140,7 +149,7 @@ class RouteBuilder implements RouteBuilderInterface
             };
 
             return $command;
-        } else if (in_array(strtoupper($callback), self::HTTP_VERBS) || in_array($callback, ['match'])) {
+        } else if (in_array(strtoupper($callback), self::HTTP_VERBS) || in_array($callback, ['match', 'any'])) {
 
             if ($callback == 'match') {
                 $methods = $attributes[0];
@@ -455,9 +464,9 @@ class RouteBuilder implements RouteBuilderInterface
      * 
      * @return self
      */
-    public function setErrorCallback(\Closure $callback)
+    public function setErrorHandler(\Closure $callback)
     {
-        $this->errorCallback = $this->bindContainer($callback);
+        $this->errorHandler = $this->bindContainer($callback);
         return $this;
     }
 
@@ -493,13 +502,13 @@ class RouteBuilder implements RouteBuilderInterface
     }
 
     /**
-     * Gets the errorCallback property
+     * Gets the Error Handler callback
      *
      * @return callable|null
      */
-    public function getErrorCallback()
+    public function getErrorHandler()
     {
-        return $this->errorCallback;
+        return $this->errorHandler;
     }
 
     /**

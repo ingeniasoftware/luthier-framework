@@ -20,7 +20,7 @@ use Symfony\Component\Console\Input\ {
 use Symfony\Component\Console\Output\OutputInterface;
 
 /**
- * A Luthier Framework application console command
+ * A console command
  * 
  * @author Anderson Salas <anderson@ingenia.me>
  */

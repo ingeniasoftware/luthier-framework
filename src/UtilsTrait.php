@@ -33,6 +33,15 @@ trait UtilsTrait
         return (PHP_SAPI === 'cli' or defined('STDIN'));
     }
 
+    /**
+     * Generates a (nice) error response
+     * 
+     * @param Request $request
+     * @param int     $status
+     * @param string  $title
+     * @param string $ message
+     * @return \Symfony\Component\HttpFoundation\JsonResponse|\Symfony\Component\HttpFoundation\Response
+     */
     public function errorResponse(Request $request, int $status = 500, string $title = 'Ups!', string $message = 'Something went wrong')
     {
         if ($request->isXmlHttpRequest()) {

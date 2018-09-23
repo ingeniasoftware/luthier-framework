@@ -42,7 +42,7 @@ class Template
 
         $driver = $container->get('TEMPLATE_DRIVER') ?? 'default';
 
-        // Please not that only the 'default' driver works out-of-the-box
+        // PLEASE NOTE: Only the (default) Plain PHP driver works out-of-the-box
         // with Luthier Framework. In order to use the other drivers you
         // MUST download the respective template engine with Composer.
         $defaultDrivers = ['default' => \Luthier\Templating\Driver\PlainPhpDriver::class,'twig' => \Luthier\Templating\Driver\TwigDriver::class,'blade' => \Luthier\Templating\Driver\BladeDriver::class];

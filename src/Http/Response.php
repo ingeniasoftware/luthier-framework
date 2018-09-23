@@ -92,7 +92,16 @@ class Response implements ResponseInterface
             throw new \BadMethodCallException("Call to undefined method Response::{$method}()");
         }
     }
-
+    
+    public function __get($property)
+    {
+        if($property == 'headers'){
+            return $this->response->headers;
+        }
+        
+        throw new \Exception("Try to get undefined Request::$property property");
+    }
+        
     /**
      * Updates the internal Symfony Response object of this class if the 
      * provided response is an instance of a Symfony Response too
@@ -118,7 +127,16 @@ class Response implements ResponseInterface
      */
     public function json($data, int $status = 200, array $headers = [])
     {
-        $this->response = new JsonResponse(is_array($data) ? json_encode($data) : $data, $status, $headers, ! is_string($data));
+        $headers = array_merge($headers, $this->response->headers->all());
+        $this->response = new JsonResponse(
+            is_array($data) 
+                ? json_encode($data) 
+                : $data,
+            $status,
+            $headers,
+            ! is_string($data)
+        );
+        
         return $this;
     }
 
@@ -130,6 +148,7 @@ class Response implements ResponseInterface
     public function write(string $content)
     {
         $this->response->setContent($this->response->getContent() . $content);
+        
         return $this;
     }
 
@@ -143,7 +162,7 @@ class Response implements ResponseInterface
         if (substr($url, 0, 7) !== 'http://' && substr($url, 0, 8) !== 'https://') {
             $url = $this->request->baseUrl() . '/' . trim($url, '/');
         }
-
+        $headers = array_merge($headers, $this->response->headers->all());
         $this->response = new RedirectResponse($url, $status, $headers);
 
         return $this;
@@ -170,6 +189,7 @@ class Response implements ResponseInterface
      */
     public function stream(callable $callback, int $status = 200, array $headers = [])
     {
+        $headers = array_merge($headers, $this->response->headers->all());
         $this->response = new StreamedResponse($callback, $status, $headers);
         return $this;
     }
@@ -189,6 +209,7 @@ class Response implements ResponseInterface
      */
     public function file($file, int $status = 200, array $headers = [], bool $public = true, string $contentDisposition = null, bool $autoEtag = false, bool $autoLastModified = true)
     {
+        $headers = array_merge($headers, $this->response->headers->all());
         $this->response = new BinaryFileResponse($file, $status, $headers, $public, $contentDisposition, $autoEtag, $autoLastModified);
         return $this;
     }

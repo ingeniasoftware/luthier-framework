@@ -20,7 +20,7 @@ interface RouteBuilderInterface
 {
 
     /**
-     * Returns all routes compiled to a Symfony RouteCollection object
+     * Returns aSymfony RouteCollection object with all compiled Luthier routes
      * 
      * @return RouteCollection
      */
@@ -30,7 +30,7 @@ interface RouteBuilderInterface
      * Gets a route URL by its name, or throws an exception if an undefined route was requested
      * 
      * @param string $name        Route name
-     * @param array  $args        Route parameters (if any)
+     * @param array  $args        Route parameters
      * @param bool   $absoluteUrl Build an absolute url
      * @throws \Exception
      * 

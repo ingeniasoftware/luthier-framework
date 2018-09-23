@@ -9,13 +9,14 @@
  * information and license details
  */
 
-namespace Luthier\Routing\Exception;
+namespace Luthier\Validator\Exception;
 
 /**
- * Exception thrown when a non-existing route is requested
+ * This exception is thrown when a validation constraint
+ * fails
  * 
  * @author Anderson Salas <anderson@ingenia.me>
  */
-class RouteNotFoundException extends \Exception 
-{
+class ValidationConstraintException extends \Exception
+{ 
 }

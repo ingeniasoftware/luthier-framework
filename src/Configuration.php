@@ -8,6 +8,7 @@
  * This file is part of the Luthier Framework. See the LICENSE file for copyright
  * information and license details
  */
+
 namespace Luthier;
 
 use Symfony\Component\Dotenv\Dotenv;
@@ -47,6 +48,7 @@ class Configuration
         'APP_LOG' => null,
         'APP_CACHE' => null,
         'APP_PATH' => null,
+        'APP_LANG' => 'en',
         // Database configuration
         'DB_TYPE' => 'mysql',
         'DB_HOST' => 'localhost',

@@ -60,7 +60,7 @@ class Container
             'service',
             \Luthier\Http\RequestHandler::class,
             [
-                'PRIVATE_SERVICES'
+                '@PRIVATE_SERVICES'
             ]
         ],
         'dispatcher' => [
@@ -95,7 +95,7 @@ class Container
         ],
         'validator' => [
             'service',
-            \Luthier\Validator::class,
+            \Luthier\Validator\Validator::class,
             []
         ]
     ];
@@ -122,7 +122,12 @@ class Container
      */
     private function getServiceCallback(string $service, array $locatorAliases = [])
     {
-        $locatorAliases = array_merge(array_keys(Configuration::getDefaultConfig()), array_keys(self::getDefaultContainer()), $locatorAliases, $this->publicAliases);
+        $locatorAliases = array_merge(
+            array_keys(Configuration::getDefaultConfig()), 
+            array_keys(self::getDefaultContainer()), 
+            $locatorAliases, 
+            $this->publicAliases
+        );
 
         return function ($container) use ($service, $locatorAliases) {
             return new $service(new ServiceLocator($container, $locatorAliases));
@@ -169,8 +174,9 @@ class Container
     public function service(string $name, $service, array $locatorAliases = [], bool $isPublic = true)
     {
         $this->parseItem($name, $service, $isPublic);
-
-        $this->container[$name] = is_string($service) ? $this->getServiceCallback($service, $locatorAliases) : $service;
+        $this->container[$name] = is_string($service) 
+            ? $this->getServiceCallback($service, $locatorAliases) 
+            : $service;
 
         return $this;
     }
@@ -187,8 +193,11 @@ class Container
     public function factory(string $name, $factory, array $locatorAliases = [])
     {
         $this->parseItem($name, $factory);
-
-        $this->container[$name] = $this->container->factory(is_string($factory) ? $this->getServiceCallback($factory, $locatorAliases) : $factory);
+        $this->container[$name] = $this->container->factory(
+            is_string($factory) 
+                ? $this->getServiceCallback($factory, $locatorAliases) 
+                : $factory
+        );
 
         return $this;
     }
@@ -212,7 +221,9 @@ class Container
             $this->publicAliases[] = $name;
         }
 
-        $this->container[$name] = is_callable($value) ? $this->container->protect($value) : $value;
+        $this->container[$name] = is_callable($value) 
+            ? $this->container->protect($value) 
+            : $value;
 
         return $this;
     }

@@ -13,8 +13,8 @@ namespace Luthier\Routing;
 use Symfony\Component\Routing\Route as SfRoute;
 
 /**
- * Abstract representation of a Route. The most important here 
- * is the compile() method, which returns the actual Symfony Route object.
+ * Represents a Route. The most important here is the compile() method, 
+ * which returns the actual Symfony Route object.
  * 
  * @author Anderson Salas <anderson@ingenia.me>
  */
@@ -231,7 +231,6 @@ class Route
      */
     public function compile()
     {
-        $name = $this->name;
         $path = $this->fullPath;
 
         if (is_callable($this->action)) {

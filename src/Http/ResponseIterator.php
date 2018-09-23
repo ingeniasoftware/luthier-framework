@@ -15,8 +15,8 @@ use Luthier\Routing\RouteBuilder;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 
 /**
- * Iterates over the given middleware stack and finally executes the route
- * controller/closure callback. 
+ * Iterates over the given middleware stack and then executes the main 
+ * route controller/closure callback. 
  * 
  * @author Anderson Salas <anderson@ingenia.me>
  */
@@ -70,12 +70,12 @@ class ResponseIterator
         self::$stack    = $stack;
         self::$callback = [$callback, $arguments];   
         
-        if(count($stack) > 0){      
+        if (count($stack) > 0) {      
             $middleware = self::getMiddleware(self::$stack[0]);
             Response::getRealResponse($middleware($request, $response, function($request, $response){
                 return \Luthier\Http\ResponseIterator::next($request, $response);
             }), $response);
-        } else{
+        } else {
             Response::getRealResponse($callback(...$arguments), $response);
         }
     }
@@ -110,7 +110,7 @@ class ResponseIterator
 
         $middleware = self::iterate();
 
-        if($middleware === NULL){
+        if ($middleware === NULL) {
             [$callback, $arguments] = self::$callback;
             return $callback(...$arguments);
         } else {

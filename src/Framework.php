@@ -9,6 +9,10 @@
  * information and license details
  */
 
+/*
+ * To my friend Mariana C., because all that I've learned it's thanks to you.
+ */
+
 namespace Luthier;
 
 use Symfony\Component\HttpKernel;
@@ -17,7 +21,7 @@ use Symfony\Component\Console\Application;
 use Symfony\Component\Console\CommandLoader\FactoryCommandLoader;
 
 /**
- * An "application" object of Luthier Framework
+ * Luthier Framework application main object
  *
  * @author Anderson Salas <anderson@ingenia.me>
  */
@@ -181,6 +185,8 @@ class Framework
      * @param string $file
      * @param string $line
      * 
+     * @internal
+     * 
      * @return int
      */
     public function errorHandler($level, $message, $file = null, $line = null)
@@ -203,9 +209,12 @@ class Framework
     }
 
     /**
-     * Luthier Framework exception handler
+     * Internal exception handler
      * 
-     * @param mixed $exception
+     * @param \Exception $exception
+     * 
+     * @internal
+     * @return void
      */
     public function exceptionHandler($exception)
     {
@@ -223,7 +232,10 @@ class Framework
     }
 
     /**
-     * Luthier Framework shutdown handler
+     * Shutdown handler
+     * 
+     * @internal
+     * @return void
      */
     public function shutdownHandler()
     {
@@ -256,7 +268,7 @@ class Framework
         }
 
         // We will use this on our Request Handler service later
-        $this->container->parameter('PRIVATE_SERVICES', $this->container->getPrivateAliases());
+        $this->container->parameter('@PRIVATE_SERVICES', $this->container->getPrivateAliases());
 
         // PHP runtime configuration
         switch ($config['APP_ENV']) {

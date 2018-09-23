@@ -18,8 +18,7 @@ use Luthier\Http\Request;
 use Luthier\Http\Response;
 
 /**
- * Simple Controller implementation. The dependency container will be provided
- * by the request handler during the route match
+ * An application Controller
  *
  * @author Anderson Salas <anderson@ingenia.me>
  */
@@ -49,12 +48,12 @@ class Controller
     /**
      * Controller init
      * 
-     * (This method is called automatically by the Request Handler service
-     * 
      * @param ContainerInterface $container
      * @param Request $request
      * @param Response $response
      * @param Route $route
+     * 
+     * @internal
      * 
      * @return self
      */

@@ -15,13 +15,10 @@ use Psr\Container\ContainerInterface;
 use FluentPDO;
 
 /**
- * Application model.
+ * A class which contains user-defined methods to interact
+ * with a database with the application main PDO instance.
  * 
- * Uses the FluentPDO Query Builder. If the application environment is
- * set to "development" all executed queries trought FluentPDO will be
- * logged.
- * 
- * @author <anderson@ingenia.me>
+ * @author Anderson Salas <anderson@ingenia.me>
  */
 class Model
 {

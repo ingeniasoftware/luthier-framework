@@ -37,7 +37,6 @@ class TwigDriver implements TemplateDriverInterface
     public function __construct(ContainerInterface $container)
     {
         $this->container = $container;
-
         $this->loader = new \Twig_Loader_Filesystem([$container->get('APP_PATH') . '/' . $container->get('TEMPLATE_DIR')]);
 
         $config = [];
