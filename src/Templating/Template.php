@@ -84,7 +84,7 @@ class Template
         });
         
         $this->driver->addFunction('validation_errors', function($field = null) use($container){
-            return call_user_func_array([$container->get('validator'), 'getValidationErrors'], $field);
+            return call_user_func_array([$container->get('validator'), 'getValidationErrors'], [$field]);
         });
         
         $this->driver->addFunction('csrf_field', function() use($container){

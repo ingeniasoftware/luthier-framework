@@ -131,7 +131,7 @@ class PlainPhpDriver implements TemplateDriverInterface
         $this->globals['_b'] = function ($name, $content = null) use ($instance) {
             if (! isset($instance->blocks[$name])) {
                 if ($content !== null) {
-                    $instance->blocks[$name] = $content;
+                    return $instance->blocks[$name] = $content;
                 }
             } else {
                 if (is_callable($instance->blocks[$name])) {
