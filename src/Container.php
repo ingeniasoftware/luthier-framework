@@ -97,7 +97,12 @@ class Container
             'service',
             \Luthier\Validator\Validator::class,
             []
-        ]
+        ],
+        'security' => [
+            'service',
+            \Luthier\Http\Security::class,
+            []
+        ],
     ];
 
     public function __construct()
@@ -106,7 +111,7 @@ class Container
     }
 
     /**
-     * Returns the default Luthier Framework container
+     * Gets the default Luthier Framework container
      *
      * @return array
      */

@@ -13,6 +13,7 @@ namespace Luthier\Routing;
 
 use Psr\Container\ContainerInterface;
 use Luthier\Http\Middleware\AjaxMiddleware;
+use Luthier\Http\Middleware\CsrfMiddleware;
 use Luthier\Http\Middleware\MiddlewareInterface;
 use Luthier\Routing\Route as LuthierRoute;
 use Luthier\Routing\Command as LuthierCommand;
@@ -129,7 +130,10 @@ class RouteBuilder implements RouteBuilderInterface
         $this->container = $container;
         $this->routeCollection = new RouteCollection();
         $this->requestContext = new RequestContext();
+        
+        // Built-in middleware
         $this->middleware('ajax', AjaxMiddleware::class);
+        $this->middleware('csrf', CsrfMiddleware::class);
     }
 
     public function __call($callback, array $attributes)

@@ -58,7 +58,13 @@ class Configuration
         'DB_MDNS' => null,
         // Template configuration
         'TEMPLATE_DRIVER' => 'default',
-        'TEMPLATE_DIR' => null
+        'TEMPLATE_DIR' => null,
+        // CSRF protection configuration
+        'CSRF_TOKEN_NAME' => null,
+        'CSRF_TOKEN_LIFETIME' => 3600,
+        'CSRF_TOKEN_COOKIE_DOMAIN' => null,
+        'CSRF_TOKEN_COOKIE_PATH' => null,
+        'CSRF_TOKEN_LENGTH' => 16
     ];
 
     /**

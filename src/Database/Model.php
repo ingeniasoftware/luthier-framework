@@ -16,13 +16,12 @@ use FluentPDO;
 
 /**
  * A class which contains user-defined methods to interact
- * with a database with the application main PDO instance.
+ * with a database using the application PDO instance.
  * 
  * @author Anderson Salas <anderson@ingenia.me>
  */
 class Model
 {
-
     /**
      * @var Connection
      */

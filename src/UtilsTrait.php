@@ -42,10 +42,10 @@ trait UtilsTrait
      * @param string $ message
      * @return \Symfony\Component\HttpFoundation\JsonResponse|\Symfony\Component\HttpFoundation\Response
      */
-    public function errorResponse(Request $request, int $status = 500, string $title = 'Ups!', string $message = 'Something went wrong')
-    {
+    public function errorResponse(Request $request, int $status = 500, ?string $title = 'Ups!', string $message = 'Something went wrong')
+    {        
         if ($request->isXmlHttpRequest()) {
-            return new JsonResponse([$title => $message], $status);
+            return new JsonResponse(['error' => $message], $status);
         } else {
             ob_start();
             require __DIR__ . '/Resources/Views/Error.php';

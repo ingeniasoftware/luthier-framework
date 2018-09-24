@@ -219,7 +219,6 @@ class Framework
     public function exceptionHandler($exception)
     {
         $error = 'Uncaught exception ' . get_class($exception) . ': ' . $exception->getMessage() . ' at ' . $exception->getFile() . ' on line ' . $exception->getLine() . PHP_EOL . 'Stack trace: ' . PHP_EOL . $exception->getTraceAsString();
-
         $this->container->get('logger')->error($error);
 
         if ($this->whoops === null) {
@@ -249,7 +248,9 @@ class Framework
      * Configures the application
      * 
      * @throws \Exception
+     * 
      * @internal
+     * @return void
      */
     private function configure()
     {
@@ -315,6 +316,7 @@ class Framework
      */
     public function run()
     {
+        // Lets configure our application...
         $this->configure();
 
         $this->logger->debug('Luthier Framework v' . self::VERSION . ' (PHP ' . phpversion() . ') APP_PATH="' . $this->container->get('APP_PATH') . '"', ['CORE']);
@@ -328,6 +330,8 @@ class Framework
 
     /**
      * Runs the application in HTTP mode
+     * 
+     * @return void
      */
     private function runHttp()
     {
@@ -341,7 +345,6 @@ class Framework
             }
 
             $this->logger->debug('HttpKernel cache folder set to "' . $cacheFolder . '/http"', ['CORE']);
-
             $requestHandler = new HttpKernel\HttpCache\HttpCache($requestHandler, new HttpKernel\HttpCache\Store($cacheFolder . '/http'));
         }
 
@@ -350,6 +353,8 @@ class Framework
 
     /**
      * Runs the application in CLI mode
+     * 
+     * @return void
      */
     private function runCli()
     {

@@ -20,7 +20,7 @@ interface RouteBuilderInterface
 {
 
     /**
-     * Returns aSymfony RouteCollection object with all compiled Luthier routes
+     * Returns a Symfony RouteCollection object with all compiled Luthier routes
      * 
      * @return RouteCollection
      */
