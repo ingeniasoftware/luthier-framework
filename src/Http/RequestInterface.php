@@ -24,6 +24,8 @@ interface RequestInterface
 
     /**
      * Gets the Symfony Request
+     * 
+     * @return \Symfony\Component\HttpFoundation\Request
      */
     public function getRequest();
 
