@@ -15,6 +15,7 @@ use Psr\Container\ContainerInterface;
 use Luthier\Http\Middleware\AjaxMiddleware;
 use Luthier\Http\Middleware\CsrfMiddleware;
 use Luthier\Http\Middleware\MiddlewareInterface;
+use Luthier\Http\Middleware\ValidationMiddleware;
 use Luthier\Routing\Route as LuthierRoute;
 use Luthier\Routing\Command as LuthierCommand;
 use Symfony\Component\Routing\Route;
@@ -134,6 +135,7 @@ class RouteBuilder implements RouteBuilderInterface
         // Built-in middleware
         $this->middleware('ajax', AjaxMiddleware::class);
         $this->middleware('csrf', CsrfMiddleware::class);
+        $this->middleware('validation', ValidationMiddleware::class);
     }
 
     public function __call($callback, array $attributes)

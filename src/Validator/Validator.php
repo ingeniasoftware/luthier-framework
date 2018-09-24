@@ -70,22 +70,28 @@ class Validator
         $translator->addResource('xlf', realpath( __DIR__ . '/../../vendor/symfony/validator/Resources/translations/validators.' . $locale . '.xlf'), $locale, "validators");
         $this->translator = $translator;
 
-        $this->reset();
+        $this->reset(true);
     }
 
     /**
      * Resets the validator
+     *
+     * @param bool $preserveErrors Preserve the validation errors?
      * 
      * @return void
      */
-    public function reset()
+    public function reset(bool $preserveErrors = false)
     {
         $validator = Validation::createValidatorBuilder();
         $validator->setTranslator($this->translator);
         $validator->setTranslationDomain('validators');
+        
         $this->validator = $validator->getValidator();  
         $this->rules = [];
-        $this->validationErrors = [];
+        
+        if(!$preserveErrors) {
+            $this->validationErrors = [];
+        }
     }
     
     /**
@@ -234,7 +240,7 @@ class Validator
                     $bail = true;
                     continue;
                 }
-                     
+                                     
                 // Get the actual Symfony Constraint object
                 $sfRules[] = $this->getSfConstraint($name, $params, $messages[$name] ?? null);
             }
@@ -288,7 +294,7 @@ class Validator
                 foreach ($sfRules as $sfRule) {
                     $violation = $this->validator->validate($data[$field] ?? null, $sfRule);
                     $violations->addAll($violation);
-                    if (!empty($violation) && $bail) {
+                    if (count($violation) > 0 && $bail) {
                         break;
                     }
                 }
@@ -324,7 +330,7 @@ class Validator
     }
     
     /**
-     * Gets the last validation error list
+     * Gets the validation error list
      *  
      * @param  string $field Specific field name
      * 
@@ -335,6 +341,16 @@ class Validator
         return $field !== null 
             ? $this->validationErrors[$field] ?? []
             : $this->validationErrors;    
+    }
+    
+    /**
+     * Sets the validation errors list
+     * 
+     * @param array $errors
+     */
+    public function setValidationErrors(array $errors)
+    {
+        $this->validationErrors = $errors;
     }
 
     /**
@@ -377,7 +393,7 @@ class Validator
              */
             case 'min_length':
                 $constraint = new Constraints\Length([
-                    'min' => $params[0]
+                    'min' => (int) $params[0]
                 ]);
                 break;
             /*
@@ -385,7 +401,7 @@ class Validator
              */
             case 'max_length':
                 $constraint = new Constraints\Length([
-                    'max' => $params[0]
+                    'max' => (int) $params[0]
                 ]);
                 break;
             /*
@@ -429,8 +445,8 @@ class Validator
              */
             case 'in_range':   
                 $constraint = new Constraints\Range([
-                    'min' => $params[0],
-                    'max' => $params[1],
+                    'min' => (int) $params[0],
+                    'max' => (int) $params[1],
                 ]);
                 break;
             /*
