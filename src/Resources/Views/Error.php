@@ -2,7 +2,7 @@
 <html>
     <head>
         <meta charset="utf-8">
-        <title><?= $title ?? 'Ups' ?></title>
+        <title><?= $title ?? 'Ups!' ?></title>
         <link href="http://fonts.googleapis.com/css?family=Open+Sans:300,regular" rel="stylesheet" type="text/css">
         <style>
             body
@@ -29,7 +29,7 @@
     </head>
     <body>
         <div class="container">
-            <h1><?= $title ?? 'Ups'?></h1>
+            <h1><?= $title ?? 'Ups!'?></h1>
             <p><?= $message ?? 'Something went wrong' ?></p>
         </div>
     </body>

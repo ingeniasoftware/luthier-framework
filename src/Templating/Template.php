@@ -86,6 +86,15 @@ class Template
         $this->driver->addFunction('validation_errors', function($field = null) use($container){
             return call_user_func_array([$container->get('validator'), 'getValidationErrors'], $field);
         });
+        
+        $this->driver->addFunction('csrf_field', function() use($container){
+            $tokenName = $container->get('security')->getCsrfTokenName(); 
+            $tokenHash = $container->get('security')->getCsrfTokenHash(); 
+            if (empty($tokenName) || empty($tokenHash)) {
+                return;
+            }
+            return '<input type="hidden" name="' . $tokenName . '" value="'. $tokenHash . '" />';
+        });
     }
 
     public function __call($method, $args)
