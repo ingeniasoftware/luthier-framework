@@ -36,10 +36,10 @@ trait UtilsTrait
     /**
      * Generates a (nice) error response
      * 
-     * @param Request $request
+     * @param \Symfony\Component\HttpFoundation\Request $request
      * @param int     $status
      * @param string  $title
-     * @param string $ message
+     * @param string  $message
      * @return \Symfony\Component\HttpFoundation\JsonResponse|\Symfony\Component\HttpFoundation\Response
      */
     public function errorResponse(Request $request, int $status = 500, ?string $title = 'Ups!', string $message = 'Something went wrong')
