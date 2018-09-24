@@ -49,6 +49,8 @@ class Configuration
         'APP_CACHE' => null,
         'APP_PATH' => null,
         'APP_LANG' => 'en',
+        // Session & Cookiesconfiguration
+        'SESSION_NAME' => 'luthier_session',
         // Database configuration
         'DB_TYPE' => 'mysql',
         'DB_HOST' => 'localhost',

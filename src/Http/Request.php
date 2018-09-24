@@ -14,6 +14,7 @@ namespace Luthier\Http;
 use Psr\Container\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request as SfRequest;
 use Symfony\Component\HttpFoundation\Session\Session;
+use Symfony\Component\HttpFoundation\Session\Storage\NativeSessionStorage;
 use Luthier\UtilsTrait;
 
 /**
@@ -70,8 +71,11 @@ class Request implements RequestInterface
     
     public function __get($property)
     {
-        if (($property == 'session' || $property == 'sessionFlash') && !$this->request->hasSession()) {
-            $this->request->setSession(new Session());
+        if (($property == 'session' || $property == 'sessionFlash') && !$this->request->hasSession()) {            
+            // Session start
+            $sessionStorage = new NativeSessionStorage();
+            $sessionStorage->setName($this->container->get('SESSION_NAME'));
+            $this->request->setSession(new Session($sessionStorage));
         }
         
         if ($property == 'session') {
@@ -91,7 +95,7 @@ class Request implements RequestInterface
             'get'          => 'query',
             'server'       => 'server',
             'file'         => 'files',
-            'header'       => 'header',
+            'header'       => 'headers',
             'cookie'       => 'cookies',
             'session'      => null,
             'sessionFlash' => null,
