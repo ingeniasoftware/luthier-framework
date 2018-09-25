@@ -17,6 +17,6 @@ namespace Luthier\Http\Exception;
  * 
  * @author Anderson Salas <anderson@ingenia.me>
  */
-class CsrfTokenFailedException extends \Exception
+class InvalidCsrfTokenException extends \Exception
 { 
 }

@@ -116,7 +116,7 @@ class Security
     /**
      * Checks if the request contains a valid CSRF token
      * 
-     * @throws Exception\CsrfTokenFailedException
+     * @throws Exception\InvalidCsrfTokenException
      * 
      * @return Response|null
      */
@@ -140,7 +140,7 @@ class Security
         $requestToken = $this->request->getRequest()->request->get($this->csrfTokenName); 
         
         if (! ($requestToken !== null && hash_equals($requestToken, $this->csrfTokenHash))) {
-            throw new Exception\CsrfTokenFailedException("Invalid or missing CSRF token");  
+            throw new Exception\InvalidCsrfTokenException("Invalid or missing CSRF token");  
         }
     }
     

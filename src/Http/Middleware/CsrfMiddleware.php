@@ -12,7 +12,7 @@
 namespace Luthier\Http\Middleware;
 
 use Psr\Container\ContainerInterface;
-use Luthier\Http\Exception\CsrfTokenFailedException; 
+use Luthier\Http\Exception\InvalidCsrfTokenException; 
 use Luthier\UtilsTrait;
 
 /**
@@ -52,7 +52,7 @@ class CsrfMiddleware implements MiddlewareInterface
                 $csrf->verifyCsrfToken();  
                 return $next($request, $response);
             }
-            catch(CsrfTokenFailedException $e)
+            catch(InvalidCsrfTokenException $e)
             {
                 return $this->errorResponse($request->getRequest() ,400, null, 'Your request does not contain a valid CSRF token');
             }
