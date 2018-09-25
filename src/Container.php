@@ -130,6 +130,7 @@ class Container
         $locatorAliases = array_merge(
             array_keys(Configuration::getDefaultConfig()), 
             array_keys(self::getDefaultContainer()), 
+            ['translator'],
             $locatorAliases, 
             $this->publicAliases
         );

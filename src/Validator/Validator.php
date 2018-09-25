@@ -16,12 +16,11 @@ use Symfony\Component\Validator\Validation;
 use Symfony\Component\Validator\ConstraintViolationList;
 use Symfony\Component\Validator\Constraints;
 use Symfony\Component\Validator\ConstraintViolation;
-use Symfony\Component\Translation\Translator;
 use Symfony\Component\Translation\Loader\XliffFileLoader;
 use Luthier\Http\Request;
 
 /**
- * Luthier Framework validator
+ * Luthier Framework validator facade of Symfony validator component
  *
  * @author <anderson@ingenia.me>
  */
@@ -60,12 +59,8 @@ class Validator
     public function __construct(ContainerInterface $container)
     {
         $this->container = $container;
-        $locale = $this->container->has('APP_LANG') ? $this->container->get('APP_LANG') : 'en';
-        
-        $translator = $this->container->has('translator')
-            ? $this->container->get('translator')
-            : new Translator($locale);
-        
+        $locale = $this->container->get('APP_LANG');
+        $translator = $this->container->get('translator');
         $translator->addLoader('xlf', new XliffFileLoader());
         $translator->addResource('xlf', realpath( __DIR__ . '/../../vendor/symfony/validator/Resources/translations/validators.' . $locale . '.xlf'), $locale, "validators");
         $this->translator = $translator;

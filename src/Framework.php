@@ -268,10 +268,21 @@ class Framework
             }
         }
 
-        // We will use this on our Request Handler service later
+        // Our container private services will be available as typehinted arguments
+        // within the Router/RequestHandler
         $this->container->parameter('@PRIVATE_SERVICES', $this->container->getPrivateAliases());
         
+        // Adding the (core) Request event subscriber
         $this->dispatcher->addSubscriber(new Http\EventSubscriber\RequestSubscriber());
+
+        // The translation service is a special case: we use the Symfony translator component internally,
+        if (! $this->container->has('translator')) {
+            $this->container->service('translator', new \Symfony\Component\Translation\Translator($config['APP_LANG']), []);
+        }
+        
+        if (! ($this->container->get('translator') instanceof \Symfony\Component\Translation\Translator)) {
+            throw new \Exception("The translation service must be an instance of " . \Symfony\Component\Translation\Translator::class . "class");
+        }        
 
         // PHP runtime configuration
         switch ($config['APP_ENV']) {
@@ -292,7 +303,9 @@ class Framework
 
             $this->whoops = new \Whoops\Run();
 
-            $handler = ! $this->isCli() ? new \Whoops\Handler\PrettyPageHandler() : new \Whoops\Handler\PlainTextHandler();
+            $handler = ! $this->isCli() 
+                ? new \Whoops\Handler\PrettyPageHandler() 
+                : new \Whoops\Handler\PlainTextHandler();
 
             $this->whoops->pushHandler($handler);
         }
