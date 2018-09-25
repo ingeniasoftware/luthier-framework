@@ -92,6 +92,7 @@ class Request implements RequestInterface
         $httpContainers = [
             'attributes'   => 'attributes',
             'post'         => 'request',
+            'request'      => 'request',
             'get'          => 'query',
             'server'       => 'server',
             'file'         => 'files',
