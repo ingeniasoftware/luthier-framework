@@ -94,7 +94,7 @@ class Template
                 return;
             }
             return '<input type="hidden" name="' . $tokenName . '" value="'. $tokenHash . '" />';
-        });
+        }, true);
     }
 
     public function __call($method, $args)
