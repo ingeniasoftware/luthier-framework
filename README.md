@@ -4,16 +4,19 @@
 
 <p align="center"><strong>WARNING: Under development!</strong></p>
 
-**Luthier Framework** is a versatile PHP micro-framework for build APIs and websites quickly. When we say "micro" we mean REALLY micro: in fact, only Composer and a single .php file is required to start.
+**Luthier Framework** is a versatile PHP micro-framework for build APIs and small websites quickly. When we say "micro" we mean REALLY micro: in fact, only Composer and a single .php file is required to start.
 
 ### Features
 
 * Based on the Symfony components
-* Easy-to-use and flexible router with middleware support
-* Dependency Injection container (based on Pimple)
+* Easy to learn and extend
+* Powerful and flexible router with middleware support
+* CSRF protection
 * JSON and XML response helpers
-* Command Line Interface 
-* Optional built-in plain PHP template engine with Twig and Blade integration available 
+* Validator with translated error messages
+* Dependency Injection container 
+* Command Line Interface command creation
+* Built-in plain PHP template engine with Twig and Blade integration
 
 ### Requirements
 
