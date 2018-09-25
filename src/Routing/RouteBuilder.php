@@ -108,7 +108,7 @@ class RouteBuilder implements RouteBuilderInterface
     protected $httpNotFoundCallback;
 
     /**
-     * HTTP/1.1 404: Method Not Allowed error callback
+     * HTTP/1.1 405: Method Not Allowed error callback
      *
      * @var callable $httpNotAllowedCallback
      */
