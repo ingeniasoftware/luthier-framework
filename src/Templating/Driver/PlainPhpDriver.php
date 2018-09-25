@@ -64,8 +64,11 @@ class PlainPhpDriver implements TemplateDriverInterface
     public static function __callStatic($method, $args)
     {
         if (isset(self::$instance->functions[$method])) {
+            
             return call_user_func_array(self::$instance->functions[$method], $args);
+        
         } else if ($method == 'extends') {
+            
             if (count($args) < 1) {
                 throw new \InvalidArgumentException("The 'extends' function expects at least 2 arguments, " . count($args) . " provided");
             }
@@ -74,7 +77,9 @@ class PlainPhpDriver implements TemplateDriverInterface
             $vars = $args[1] ?? [];
 
             self::$instance->extending[] = [$template,$vars];
+            
         } else if ($method == 'block') {
+            
             if (count($args) < 1) {
                 throw new \InvalidArgumentException("The 'block' function expects at least 2 arguments, " . count($args) . " provided");
             }
@@ -82,14 +87,16 @@ class PlainPhpDriver implements TemplateDriverInterface
             $name = $args[0];
             $content = $args[1] ?? null;
 
-            if (! isset(self::$instance->blocks[$name])) {
-                self::$instance->blocks[$name] = $content;
+            if (! isset(self::$instance->blocks[$name])) {    
+                self::$instance->blocks[$name] = $content;  
             } else {
                 if (is_callable(self::$instance->blocks[$name])) {
                     return call_user_func(self::$instance->blocks[$name]);
                 }
+                
                 return self::$instance->blocks[$name];
             }
+            
         } else {
             throw new \BadMethodCallException('Undefined "' . $method . '" template function');
         }
