@@ -105,6 +105,24 @@ if (!function_exists('json_response')) {
     
 }
 
+if (!function_exists('xml_response')) {
+    
+    /**
+     * Sets the current response as a XML response with the given array of data
+     *
+     * @param array  $data
+     * @param number $status
+     * @param array  $headers
+     *
+     * @return void
+     */
+    function xml_response(array $data, ?string $rootName = null, ?bool $translateSpaces = true, $status = 200, $headers = [])
+    {
+        \Luthier\Framework::$response->xml($data, $rootName, $translateSpaces, $status, $headers);
+    }
+    
+}
+
 if (!function_exists('view')) {
     
     /**

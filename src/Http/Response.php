@@ -19,6 +19,7 @@ use Symfony\Component\HttpFoundation\ {
     StreamedResponse,
     BinaryFileResponse
 };
+use Spatie\ArrayToXml\ArrayToXml;
 
 /**
  * Wrapper of the Symfony Response object with useful methods and shortcuts
@@ -136,6 +137,27 @@ class Response implements ResponseInterface
             $headers,
             ! is_string($data)
         );
+        
+        return $this;
+    }
+    
+    /**
+     * Sets the response to a XML response with the given array of data
+     * 
+     * @param array  $data             Array of data to be pased to XML
+     * @param string $rootName         Document root name
+     * @param bool   $translateSpaces  Translate spaces to underscores?
+     * @param int    $status           HTTP Stat
+     * @param array  $headers
+     * 
+     * @return self
+     */
+    public function xml(array $data, ?string $rootName = null, ?bool $translateSpaces = true, int $status = 200, array $headers = [])
+    {
+        $this->response->setContent(ArrayToXml::convert($data, $rootName ?? '', $translateSpaces ?? true));
+        $this->response->setStatusCode($status);
+        $this->response->headers->add($headers);
+        $this->response->headers->add(['Content-Type' => 'application/xml']);
         
         return $this;
     }
