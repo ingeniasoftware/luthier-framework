@@ -292,12 +292,14 @@ class RequestHandler implements HttpKernelInterface
         $this->logger->debug($request->getMethod() . ' ' . $request->getUri(), [
             'REQUEST_HANDLER'
         ]);
-        $this->matcher->getContext()->fromRequest($request);
-
+        
         // Dispatch the 'request' event
         $this->dispatcher->dispatch('request', new Events\RequestEvent($this->container));
+        
+        $this->matcher->getContext()->fromRequest($request);
 
         try {
+            
             if ($this->router->count() == 0) {
                 return $this->welcomeScreen();
             }
@@ -328,6 +330,7 @@ class RequestHandler implements HttpKernelInterface
             // Now with the route callback/arguments and the middleware stack, we can
             // start iterating it
             ResponseIterator::handle($this->router, $middlewareStack, $callback, $arguments, $this->request, $this->response);
+        
         } catch (ResourceNotFoundException | NotFoundHttpException $exception) {
             $this->handle404($request, $exception);
         } catch (MethodNotAllowedException | MethodNotAllowedHttpException $exception) {

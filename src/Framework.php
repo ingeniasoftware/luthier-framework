@@ -270,6 +270,8 @@ class Framework
 
         // We will use this on our Request Handler service later
         $this->container->parameter('@PRIVATE_SERVICES', $this->container->getPrivateAliases());
+        
+        $this->dispatcher->addSubscriber(new Http\EventSubscriber\RequestSubscriber());
 
         // PHP runtime configuration
         switch ($config['APP_ENV']) {
