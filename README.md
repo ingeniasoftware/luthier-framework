@@ -4,17 +4,16 @@
 
 <p align="center"><strong>WARNING: Under development!</strong></p>
 
-**Luthier Framework** is a versatile PHP micro framework for build APIs and websites quickly. When we says "micro" we mean REALLY micro: in fact, only Composer and a single .php file is required to start. 
+**Luthier Framework** is a versatile PHP micro-framework for build APIs and websites quickly. When we say "micro" we mean REALLY micro: in fact, only Composer and a single .php file is required to start.
 
 ### Features
 
-* Built on the well-known Symfony components
-* PSR-7 compliant
-* Middleware support 
-* A very lightweight dependency injection container based on Pimple
-* Simple yet powerful router, great for making REST APIs
-* A lot of useful shortcuts for basic operations such returning JSON responses and redirections
-* CLI support
+* Based on the Symfony components
+* Easy-to-use and flexible router with middleware support
+* Dependency Injection container (based on Pimple)
+* JSON and XML response helpers
+* Command Line Interface 
+* Optional built-in plain PHP template engine with Twig and Blade integration available 
 
 ### Requirements
 
@@ -31,7 +30,7 @@ composer require luthier/framework
 
 ### Usage
 
-Basic app:
+Basic example:
 
 ```php
 <?php
@@ -41,13 +40,17 @@ require 'vendor/autoload.php';
 
 $app = new Luthier\Framework();
 
+$app->get('/', function(){
+	$this->response->write("Hello world!");
+});
+
 $app->group('api', function(){
 
     $this->get('/', function(){
-        $this->response->json(['message' => 'Welcome to Luthier Framework!']);
+        json_response(['message' => 'Welcome to Luthier Framework!']);
     });
     $this->get('about', function(){
-        $this->response->json(['luthier_version' => Luthier\Framework::VERSION]);
+        json_response(['version' => Luthier\Framework::VERSION]);
     });
 
 });
@@ -58,15 +61,15 @@ $app->run();
 Defining routes:
 
 ```php
-$app->get('path', function(){
+$app->get('foo/', function(){
     // GET route
 });
 
-$app->post('path', function(){
+$app->post('bar/', function(){
     // POST route
 });
 
-$app->match(['get','post'], 'path', function(){
+$app->match(['get','post'], 'baz/', function(){
     // This route accept both GET and POST requests
 });
 ```
