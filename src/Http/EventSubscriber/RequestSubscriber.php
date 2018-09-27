@@ -27,13 +27,41 @@ class RequestSubscriber implements EventSubscriberInterface
     public function onRequest(Events\RequestEvent $event)
     {
         $request = $event->getRequest();
-        
+        $this->setRequestMethodFromField($request);
+        $this->parseJsonBody($request);
+    }
+    
+    /**
+     * If the request is a POST request and contains a field named "_method"
+     * we will set the request method to the "_method" field value, allowing 
+     * us to use other methods than GET and POST via traditional html forms
+     * 
+     * @param \Luthier\Http\Request $request
+     * @internal
+     */
+    private function setRequestMethodFromField($request)
+    {
         if (strtolower($request->getMethod()) == "post" && !$request->isAjax()) {
             $method = $request->post("_method");
             if (!empty($method)) {
-                $request->setMethod($method);
+                $request->setMethod(strtoupper($method));
             }
         }
+    }
+    
+    /**
+     * JSON body parsing. Useful when we recieve a request with a JSON 
+     * payload (Content-Type: application/json).
+     * 
+     * @param \Luthier\Http\Request $request
+     * @internal
+     */
+    private function parseJsonBody($request)
+    {
+       if ($request->getContentType() === 'json') {
+            $jsonBody = json_decode($request->getContent(), true);
+            $request->getRequest()->request->add($jsonBody);
+       }
     }
     
     public static function getSubscribedEvents()
