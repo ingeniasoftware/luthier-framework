@@ -104,7 +104,7 @@ class ResponseIterator
      */
     public static function next(Request $request, Response $response)
     {
-        if($response->getResponse() instanceof RedirectResponse){
+        if ($response->getResponse() instanceof RedirectResponse) {
             return;
         }
 
