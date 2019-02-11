@@ -57,7 +57,7 @@ class Controller
      * 
      * @return self
      */
-    public function setController(ContainerInterface $container, Request $request, Response $response, Route $route)
+    public function init(ContainerInterface $container, Request $request, Response $response, Route $route)
     {
         $this->container = $container;
         $this->request = $request;

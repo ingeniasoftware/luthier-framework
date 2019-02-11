@@ -135,11 +135,11 @@ class RequestHandler implements HttpKernelInterface
         if ($callback instanceof \Closure) {
             // Is the route action a closure? Let's bind it to a new instance of
             // Luthier\Controller
-            $callback = \Closure::bind($callback, (new Controller())->setController($this->container, $this->request, $this->response, $route), Controller::class);
+            $callback = \Closure::bind($callback, (new Controller())->init($this->container, $this->request, $this->response, $route), Controller::class);
         } else if (isset($callback[0]) && $callback[0] instanceof Controller) {
             // Is the route action an instance of Luthier\Controller? then set the
             // container, request, response and current route
-            $callback[0]->setController($this->container, $this->request, $this->response, $route);
+            $callback[0]->init($this->container, $this->request, $this->response, $route);
         } else {
             if (! isset($callback[0]) && ! is_object($callback[0])) {
                 // Not a closure or an object? sorry, we will not handle that

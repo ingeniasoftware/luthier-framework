@@ -7,9 +7,7 @@
  *
  * This file is part of the Luthier Framework. See the LICENSE file for copyright
  * information and license details
- */
-
-/*
+ * 
  * To my friend Mariana C., because all that I've learned it's thanks to you.
  */
 
@@ -29,7 +27,7 @@ class Framework
 {
     use UtilsTrait;
 
-    const VERSION = '0.1.0-alpha1';
+    const VERSION = '0.1.0';
 
     /**
      * @var \Symfony\Component\HttpFoundation\Request
