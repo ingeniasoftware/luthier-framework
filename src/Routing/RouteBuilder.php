@@ -385,8 +385,21 @@ class RouteBuilder implements RouteBuilderInterface
                 $args[$stickyParam] = $route->param($stickyParam);
             }
         }
-
-        return $this->routeGenerator->generate($name, $args, $absoluteUrl ? UrlGeneratorInterface::ABSOLUTE_URL : NULL);
+   
+        $generated = $this->routeGenerator->generate($name, $args, $absoluteUrl ? UrlGeneratorInterface::ABSOLUTE_URL : NULL);
+        
+        // If the APP_URL property is set, we'll generate the URLs based on that
+        // value:
+        $baseUrl = $this->container->get('APP_URL');
+        if (!empty($baseUrl)) {
+            $context  = $this->routeGenerator->getContext();
+            $offset   = strpos($generated, $context->getBaseUrl());
+            $segments = str_ireplace($context->getBaseUrl(), '', substr($generated, $offset));
+            return $baseUrl . $segments;
+        }
+        
+        // If not, Symfony will generate the URL for us:
+        return $generated;
     }
 
     /**
