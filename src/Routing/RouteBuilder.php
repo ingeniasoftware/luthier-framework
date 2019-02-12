@@ -125,13 +125,18 @@ class RouteBuilder implements RouteBuilderInterface
      * @var \Luthier\Routing\Route
      */
     protected $currentRoute;
+    
+    /**
+     * @var bool $isSandboxed
+     */
+    protected static $isSandboxed = false;
 
     public function __construct(ContainerInterface $container)
     {
         $this->container = $container;
         $this->routeCollection = new RouteCollection();
         $this->requestContext = new RequestContext();
-        
+          
         // Built-in middleware
         $this->middleware('ajax', AjaxMiddleware::class);
         $this->middleware('csrf', CsrfMiddleware::class);
@@ -296,6 +301,13 @@ class RouteBuilder implements RouteBuilderInterface
         } else {
             if (! is_array($middleware)) {
                 $middleware = [$middleware];
+            }
+            
+            if(self::$isSandboxed)
+            {
+                $routeMiddleware = isset(self::$context['middleware']['route'][0]) ? self::$context['middleware']['route'][0] : [];
+                self::$context['middleware']['route'][0] = !is_array($routeMiddleware) ? $middleware : array_merge($routeMiddleware, $middleware);
+                return;
             }
 
             foreach ($middleware as $_middleware) {
@@ -526,7 +538,7 @@ class RouteBuilder implements RouteBuilderInterface
     {
         $routeMiddleware = $route->getMiddleware() ?? [];
         $globalMiddleware = self::$context['middleware']['global'];
-        return array_merge($routeMiddleware, $globalMiddleware);
+        return array_merge($globalMiddleware, $routeMiddleware);
     }
 
     /**
@@ -537,5 +549,29 @@ class RouteBuilder implements RouteBuilderInterface
     public function count()
     {
         return count($this->routes);
+    }
+
+    /**
+     * Adds an external routing file. The $router variable will be available to define new routes within that file.
+     * 
+     * @param string  $filename    External file
+     * @param string  $prefix      Global prefix
+     * @param array   $attributes  Global attributes
+     */
+    public function addRoutes(string $filename, string $prefix = '', array $attributes = [])
+    {
+        self::$isSandboxed = true;
+        
+        $appPath = $this->container->get('APP_PATH');      
+        
+        (function($router) use($appPath, $filename, $prefix, $attributes){
+            $router->group($prefix, $attributes, function() use($router, $appPath, $filename){
+                require($appPath . '/' . $filename . (substr($filename, -4) == '.php' ? '' : '.php') );
+            });
+        })($this);
+        
+        array_pop(self::$context['middleware']['route']);
+        
+        self::$isSandboxed = false;
     }
 }
