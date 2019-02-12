@@ -31,12 +31,17 @@ class Logger extends MonologLogger
     {
         if (! empty($container->get('APP_LOG'))) {
             $log = $container->get('APP_PATH') . '/' . $container->get('APP_LOG');
-
-            if (! file_exists(dirname($log))) {
-                mkdir(dirname($log), null, true);
-                file_put_contents($log, '');
+            
+            if (! file_exists($log)) {
+                mkdir($log, null, true);
             }
 
+            $log .= '/' . date('Y-m-d') . '.log';
+            
+            if (! file_exists($log)) {
+                file_put_contents($log, '');
+            }
+            
             $this->name = $container->get('APP_NAME');
 
             $handler = new StreamHandler(
