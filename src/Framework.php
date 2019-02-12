@@ -38,6 +38,11 @@ class Framework
      * @var Container
      */
     protected $container;
+    
+    /**
+     * @var Container
+     */
+    protected static $staticContainer;
 
     /**
      * @var Configuration
@@ -55,26 +60,6 @@ class Framework
     protected $whoops;
 
     /**
-     * @var \Luthier\Routing\RouteBuilderInterface
-     */
-    public static $router;
-
-    /**
-     * @var \Luthier\Http\RequestInterface
-     */
-    public static $request;
-
-    /**
-     * @var \Luthier\Http\ResponseInterface
-     */
-    public static $response;
-
-    /**
-     * @var \Luthier\Templating\Driver\TemplateDriverInterface
-     */
-    public static $template;
-
-    /**
      * @param mixed     $config    Application configuration
      * @param Container $container Application container
      * @param SfRequest $request   Symfony request 
@@ -87,13 +72,30 @@ class Framework
         $this->container = $container ?? new Container();
         $this->sfRequest = $request ?? SfRequest::createFromGlobals();
         $this->appPath = $appPath ?? getcwd();
-
+        
+        self::$staticContainer = &$this->container;
+        
         if (is_array($config) || $config === null) {
             $this->config = new Configuration($config);
         } else if ($config instanceof Configuration) {
             $this->config = $config;
         } else {
             throw new \Exception("You must provide an array of configuration values or an instance of the Luthier\Configuration class");
+        }
+        
+        // Auto .env config file setting
+        if ($this->config->getEnvFolder() === null && file_exists($this->appPath . '/.env')) {
+            $this->config->setEnvFolder($this->appPath);
+        }
+        
+        // Setting the APP_PATH property
+        if (! $this->container->has('APP_PATH') || ($this->container->has('APP_PATH') && empty($this->container->get('APP_PATH')))) {
+            $this->container->parameter('APP_PATH', $this->appPath);
+        }
+        
+        // Setting the APP_URL property
+        if (! $this->container->has('APP_URL') || ($this->container->has('APP_URL') && empty($this->container->get('APP_PATH')))) {
+            $this->container->parameter('APP_URL', $this->config->getConfigValue('APP_URL', null));
         }
 
         // At this point, only a few services are required, the rest will be
@@ -104,12 +106,6 @@ class Framework
                 $this->container->{$type}($name, $class, $aliases);
             }
         }
-
-        self::$router = $this->container->get('router');
-        self::$request = $this->container->get('request');
-        self::$response = $this->container->get('response');
-
-        require __DIR__ . '/Helpers.php';
     }
 
     /**
@@ -160,6 +156,11 @@ class Framework
     {
         $this->container = $container;
         return $this;
+    }
+    
+    public static function getContainer()
+    {
+        return self::$staticContainer;
     }
 
     /**
@@ -252,11 +253,16 @@ class Framework
      */
     private function configure()
     {
-        // Configuration
+        // Let's parse the provided configuration at this point
         $config = $this->config->parse();
 
         foreach ($config as $name => $value) {
-            $this->container->parameter($name, $value);
+            // Some configuration parameters (such APP_PATH) maybe are available
+            // at this point, so we need to check if they aren't present in our
+            // container
+            if (! $this->container->has($name)) {
+                $this->container->parameter($name, $value);
+            }
         }
 
         // Container services/factories/parameters definition
@@ -311,15 +317,9 @@ class Framework
         set_error_handler([$this,'errorHandler']);
         set_exception_handler([$this,'exceptionHandler']);
         register_shutdown_function([$this,'shutdownHandler']);
-
-        // We need to know the application current working directory. By default,
-        // it's the value returned by the getcwd() function, unless it has been defined as the
-        // 'APP_PATH' parameter in the container or provided in the class constructor
-        if (! $this->container->has('APP_PATH') || ($this->container->has('APP_PATH') && empty($this->container->get('APP_PATH')))) {
-            $this->container->parameter('APP_PATH', $this->appPath);
-        }
-
-        self::$template = $this->container->get('template');
+        
+        // Some useful helpers:
+        require __DIR__ . '/Helpers.php';
     }
 
     /**
