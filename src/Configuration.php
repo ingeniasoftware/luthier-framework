@@ -29,6 +29,11 @@ class Configuration
      * @var array
      */
     protected $config;
+    
+    /**
+     * @var bool
+     */
+    protected $envLoaded = false;
 
     /**
      * @var string
@@ -77,6 +82,9 @@ class Configuration
     {
         $this->config = $config ?? [];
         $this->envFolder = $envFolder;
+        
+        if($envFolder !== null)
+            $this->fetchEnvFile();
     }
 
     /**
@@ -95,26 +103,9 @@ class Configuration
     {
         $config = [];
 
-        if ($this->envFolder !== NULL) {
-            try {
-                (new Dotenv())->load(($this->envFolder !== NULL ? $this->envFolder . '/' : '') . '.env');
-            } catch (PathException $e) {
-                throw new \Exception('Unable to find your application .env file. Does the file exists?');
-            } catch (\Exception $e) {
-                throw new \Exception('Unable to parse your application .env file');
-            }
-        }
-
         // Failsafe base configuration
         foreach (self::$defaultConfig as $name => $default) {
-            if ($this->envFolder !== NULL && getenv($name) !== FALSE) {
-                // Empty strings are considered NULL
-                $config[$name] = ! empty(getenv($name)) ? getEnv($name) : null;
-            } else if (isset($this->config[$name])) {
-                $config[$name] = $this->config[$name];
-            } else {
-                $config[$name] = $default;
-            }
+            $config[$name] = $this->getConfigValue($name, $default);
         }
 
         // All other configuration
@@ -124,6 +115,8 @@ class Configuration
             }
         }
 
+        $this->parsed = $config;
+        
         return $config;
     }
 
@@ -170,6 +163,45 @@ class Configuration
     public function setEnvFolder(string $envFolder)
     {
         $this->envFolder = $envFolder;
+        $this->fetchEnvFile();
         return $this;
+    }
+    
+    private function fetchEnvFile()
+    {
+        if($this->envLoaded)
+            return;
+        
+        if ($this->envFolder !== NULL) {
+            try {
+                (new Dotenv())->load(($this->envFolder !== NULL ? $this->envFolder . '/' : '') . '.env');
+            } catch (PathException $e) {
+                throw new \Exception('Unable to find your application .env file. Does the file exists?');
+            } catch (\Exception $e) {
+                throw new \Exception('Unable to parse your application .env file');
+            }
+        }
+        
+        $this->envLoaded = true;
+    }
+    
+    /**
+     * @param string $name
+     * @param mixed $default
+     * 
+     * @return mixed
+     */
+    public function getConfigValue(string $name, $default = null)
+    {
+        $this->fetchEnvFile();
+        
+        if ($this->envFolder !== NULL && getenv($name) !== FALSE) {
+            // Empty strings are considered NULL
+            return !empty(getenv($name)) ? getEnv($name) : null;
+        } else if (isset($this->config[$name])) {
+            return $this->config[$name];
+        } else {
+            return $default;
+        }
     }
 }
