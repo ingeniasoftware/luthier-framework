@@ -36,6 +36,10 @@ class TwigDriver implements TemplateDriverInterface
      */
     public function __construct(ContainerInterface $container)
     {
+        if (!class_exists('Twig_Loader_Filesystem')) {
+            throw new \ErrorException('You must download Twig with Composer first!');
+        }
+        
         $this->container = $container;
         $this->loader = new \Twig_Loader_Filesystem([$container->get('APP_PATH') . '/' . $container->get('TEMPLATE_DIR')]);
 
